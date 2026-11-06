@@ -35,7 +35,7 @@ Backend: `pytest`, `pytest-django`, `pytest-cov`, `respx` (httpx mocking), `hypo
 ## 3. Global rules
 
 * **No real network in tests.** `tests/conftest.py` has an autouse fixture that patches `httpx` transports with `respx.mock(assert_all_called=False)` and fails any unmocked request. Real network is allowed only in `scripts/live_smoke.py` (never run by CI).
-* **Fixtures** (`backend/tests/fixtures/`): `osrm_nyc_chicago.json` (3 routes), `osrm_la_nyc.json` (3 routes, ~2,800 mi), `nominatim_*.json`, `open_meteo_multi.json`, `stations_mini.csv` (≈ 60 hand-made rows covering Canadian rows, duplicate IDs, bad prices, unmatched city), `places_mini.csv`. They are recorded once with `scripts/record_fixtures.py` (≤ 1 req/s, real `APP_CONTACT`) and then committed.
+* **Fixtures** (`backend/tests/fixtures/`): `osrm_nyc_chicago.json` (recorded as returned by OSRM demo: 2 routes when `alternatives=3` requested; 790.6 mi and 824.7 mi), `osrm_three_routes_synthetic.json` (hand-built 3-route fixture for AT-13 and selection tests), `osrm_la_nyc.json` (~2,800 mi), `nominatim_*.json`, `open_meteo_multi.json`, `stations_mini.csv` (≈ 60 hand-made rows covering Canadian rows, duplicate IDs, bad prices, unmatched city), `places_mini.csv`. They are recorded once with `scripts/record_fixtures.py` (≤ 1 req/s, real `APP_CONTACT`) and then committed.
 * Tests are deterministic: fixed seeds for random/hypothesis (`derandomize=True` in CI profile), frozen time (`freezegun` is **not** allowed; inject a `clock` callable).
 * A test must fail when the feature is removed (verify by temporarily breaking the code during development of critical tests R7, R9, R20).
 
