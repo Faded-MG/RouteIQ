@@ -1,0 +1,221 @@
+{
+  "info": {
+    "_postman_id": "c1f7a012-9988-4c91-9e6b-3544293fbf00",
+    "name": "FuelRoute API",
+    "description": "Fuel-optimal driving route planning API conforming to Spotter assessment requirements and API_SPEC.md.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Liveness Probe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/health/live",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "health", "live"]
+            },
+            "description": "Liveness check endpoint returning 200 OK without touching DB or external services."
+          },
+          "response": []
+        },
+        {
+          "name": "Readiness Probe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/health/ready",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "health", "ready"]
+            },
+            "description": "Readiness check verifying database connectivity and loaded station data."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Trip Planning",
+      "item": [
+        {
+          "name": "Plan: NYC to Chicago (Defaults)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": {\n    \"query\": \"New York, NY\"\n  },\n  \"finish\": {\n    \"query\": \"Chicago, IL\"\n  },\n  \"options\": {\n    \"start_fuel_gal\": 0.0\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/routes/plan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "routes", "plan"]
+            },
+            "description": "Assessment core case: NYC to Chicago with empty starting tank, geocoding and exact DP optimization."
+          },
+          "response": []
+        },
+        {
+          "name": "Plan: Direct Coordinates",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": {\n    \"lat\": 40.7127,\n    \"lon\": -74.0060\n  },\n  \"finish\": {\n    \"lat\": 41.8756,\n    \"lon\": -87.6244\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/routes/plan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "routes", "plan"]
+            },
+            "description": "Bypasses geocoding by supplying exact coordinates within the contiguous US."
+          },
+          "response": []
+        },
+        {
+          "name": "Plan: Coast-to-Coast (LA to NYC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": {\n    \"query\": \"Los Angeles, CA\"\n  },\n  \"finish\": {\n    \"query\": \"New York, NY\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/routes/plan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "routes", "plan"]
+            },
+            "description": "Cross-country route (~2,800 miles) demonstrating multi-stop refueling with no leg exceeding 500 miles."
+          },
+          "response": []
+        },
+        {
+          "name": "Plan: Full Tank Start (No Refuel Needed)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": {\n    \"query\": \"Philadelphia, PA\"\n  },\n  \"finish\": {\n    \"query\": \"New York, NY\"\n  },\n  \"options\": {\n    \"start_fuel_gal\": 50.0\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/routes/plan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "routes", "plan"]
+            },
+            "description": "Short trip starting with 50 gallons resulting in status 'no_refuel_needed' and $0 cost."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Error Cases",
+      "item": [
+        {
+          "name": "400: Validation Error (Missing Start)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"finish\": {\n    \"query\": \"Chicago, IL\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/routes/plan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "routes", "plan"]
+            },
+            "description": "Demonstrates 400 VALIDATION_ERROR envelope with details.fields."
+          },
+          "response": []
+        },
+        {
+          "name": "422: Location Not Found",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": {\n    \"query\": \"NowhereZzz 99999\"\n  },\n  \"finish\": {\n    \"query\": \"Chicago, IL\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/routes/plan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "routes", "plan"]
+            },
+            "description": "Demonstrates 422 LOCATION_NOT_FOUND with details.which."
+          },
+          "response": []
+        },
+        {
+          "name": "422: Route Too Short (< 1 Mile)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": {\n    \"lat\": 40.7127,\n    \"lon\": -74.0060\n  },\n  \"finish\": {\n    \"lat\": 40.7128,\n    \"lon\": -74.0061\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/routes/plan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "routes", "plan"]
+            },
+            "description": "Demonstrates 422 ROUTE_TOO_SHORT when start and finish are within 1 mile."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

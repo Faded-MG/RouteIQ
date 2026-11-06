@@ -20,7 +20,10 @@ def _format_validation_details(detail: Any, prefix: str = "") -> dict[str, list[
 
     if isinstance(detail, dict):
         for key, val in detail.items():
-            field_name = f"{prefix}.{key}" if prefix else str(key)
+            if key == "non_field_errors" and prefix:
+                field_name = prefix
+            else:
+                field_name = f"{prefix}.{key}" if prefix else str(key)
             nested = _format_validation_details(val, prefix=field_name)
             fields.update(nested)
     elif isinstance(detail, (list, tuple)):

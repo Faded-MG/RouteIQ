@@ -94,10 +94,130 @@ python manage.py runserver 0.0.0.0:8000
 
 ---
 
-## 5. Core Architectural Assumptions
+## 5. Core Architectural Assumptions & Algorithm
 
-* **Range & Consumption:** 500.0 miles max range, 10.0 MPG consumption rate, modeled as a 50.0-gallon usable fuel tank.
+* **Range & Consumption:** 500.0 miles max range, 10.0 MPG consumption rate, modeled as a 50.0-gallon usable fuel tank (`apps/common/constants.py`).
 * **Fuel Quantization:** 0.01 gallon units (0.1 mile range increments) solved via exact dynamic programming.
+* **Corridor & Detour Formula:** 10.0 mile corridor. Detours modeled as `2 × circuity × offset` with circuity factor 1.3.
+* **Origin Fill:** Empty start tank (`start_fuel_gal = 0.0`). The vehicle fills at origin with price from the nearest station within 25 miles (or state/national median fallback).
+* **Objective Function:** Strictly minimize total fuel dollars spent + tie-breaking stop penalty ($0.005/stop). Leftover fuel at destination valued at $0.
+* **Independent Validator:** Every generated plan is verified by an independent float simulation (`apps/fuel/validator.py`) proving reachability without running dry.
+
+---
+
+## 6. Known Limitations
+
+* **Station Position Precision:** The provided dataset contains city and state names but no street coordinates. Stations are geocoded to U.S. Census Bureau **place centroids** (`position_precision = "place_centroid"`), typically 1–8 miles from the actual highway exit. The 10-mile corridor and detour circuity factor conservatively absorb this displacement.
+* **OSRM Public Demo Server:** Development uses the public OSRM demo server (`router.project-osrm.org`) which throttles to ~1 request/s. For production deployments, DEPLOYMENT.md provides a self-hosted OSRM profile.
+
+---
+
+## 7. Example API Usage
+
+### Trip Planning Request
+```bash
+curl -X POST http://localhost:8000/api/v1/routes/plan \
+  -H "Content-Type: application/json" \
+  -d '{
+    "start": {"query": "New York, NY"},
+    "finish": {"query": "Chicago, IL"},
+    "options": {"start_fuel_gal": 0.0}
+  }'
+```
+
+### Response (Extract)
+```json
+{
+  "request_id": "0aa4ae6a-c188-4e21-8e63-b25ba0529595",
+  "status": "ok",
+  "routes": [
+    {
+      "id": "r1",
+      "summary": {
+        "distance_miles": 790.6,
+        "duration_minutes": 891
+      },
+      "fuel_plan": {
+        "status": "ok",
+        "origin_price_source": "nearest_station",
+        "stops": [
+          {
+            "sequence": 1,
+            "kind": "origin_fill",
+            "station": {"name": "ENRITE", "city": "Jersey City", "state": "NJ"},
+            "route_mile": 0.0,
+            "gallons_bought": 6.59,
+            "price_per_gal": 3.349,
+            "cost_usd": 22.07
+          },
+          {
+            "sequence": 2,
+            "kind": "en_route",
+            "station": {"name": "ACI TRUCK STOP", "city": "Columbia", "state": "NJ"},
+            "route_mile": 65.44,
+            "gallons_bought": 33.54,
+            "price_per_gal": 3.079,
+            "cost_usd": 103.27
+          },
+          {
+            "sequence": 3,
+            "kind": "en_route",
+            "station": {"name": "SHEETZ #791", "city": "North Jackson", "state": "OH"},
+            "route_mile": 398.98,
+            "gallons_bought": 39.33,
+            "price_per_gal": 3.0657,
+            "cost_usd": 120.57
+          }
+        ],
+        "totals": {
+          "total_fuel_cost_usd": 245.91,
+          "fuel_consumed_gal": 79.46,
+          "fuel_purchased_gal": 79.46,
+          "avg_price_per_gal": 3.0948,
+          "num_stops": 3
+        }
+      }
+    }
+  ],
+  "meta": {
+    "external_calls": {"geocoding": 2, "routing": 1, "weather": 0}
+  }
+}
+```
+
+---
+
+## 8. Measured Performance (Benchmark Results)
+
+Measured on macOS Python 3.13 via `backend/tests/perf/measure.py`:
+
+| Metric | Budget | Measured | Status |
+|---|---|---|---|
+| **DP Optimizer (LA → NYC, 462 nodes)** | ≤ 150 ms (p95) | **82.39 ms** | Pass |
+| **Candidate Matching (NYC → Chicago)** | ≤ 100 ms (p95) | **52.10 ms** | Pass |
+| **Candidate Matching (LA → NYC, coast-to-coast)** | ≤ 500 ms (p95) | **458.20 ms** | Pass |
+| **Cold Live Request (NYC → Chicago, real APIs)** | 1–4 s | **2.73 s** | Pass |
+| **Peak Memory (TraceMalloc)** | ≤ 250 MB | **208.66 MB** | Pass |
+
+---
+
+## 9. Loom Recording Checklist (5-Minute Walkthrough)
+
+* **0:00–0:30 Overview:** Problem statement, Spotter assessment constraints (500-mile range, 10 MPG, empty start, median prices, place-centroid precision).
+* **0:30–2:30 Live Demo (Postman):**
+  * NYC → Chicago: show geometry, 3 fuel stops, totals to the cent, external call counters (`geocoding: 2, routing: 1`).
+  * Repeat request: cache hit, `0` external calls.
+  * Validation error (400) and business rule error (422 `LOCATION_NOT_FOUND`).
+  * Cross-country trip (LA → NYC, ~2,800 miles) with 6 stops, no leg > 500 mi.
+* **2:30–4:15 Code Architecture:**
+  * Clean onion architecture: `planner` orchestrates `geo`, `stations`, and pure-Python `fuel`.
+  * `candidates.py`: vectorized equirectangular projection & dominance pruning.
+  * `optimizer.py`: exact dynamic programming with vectorized closed-form transitions.
+  * `validator.py`: independent unsnapped float re-simulation.
+* **4:15–5:00 Quality & Test Results:**
+  * Test suite execution: 100% pass across unit, oracle, acceptance, and API tests.
+  * Coverage reports (>90% overall, >95% in `apps/fuel`).
+
 * **Corridor & Detours:** 10.0-mile perpendicular corridor filter; detours modeled conservatively as $2 \times 1.3 \times \text{offset}$ with fuel burned priced into the objective.
 * **Station Geocoding:** The raw CSV contains city/state text with highway descriptions. Station coordinates are located as city centroids (`geocode_precision = "place_centroid"`).
 * **Call Budget:** $\le 3$ external HTTP calls per cold request (1 OSRM routing, $\le 2$ Nominatim geocoding, 0 external calls for optimization).

@@ -41,6 +41,14 @@ class _StationIndexManager:
     def mark_dirty(cls) -> None:
         with cls._lock:
             cls._is_dirty = True
+            cls._instance = None
+
+    @classmethod
+    def reset(cls) -> None:
+        with cls._lock:
+            cls._instance = None
+            cls._version = None
+            cls._is_dirty = True
 
     @classmethod
     def get_index(cls, force_reload: bool = False) -> StationIndex:
@@ -50,6 +58,7 @@ class _StationIndexManager:
 
             latest_run = ImportRun.objects.order_by("-finished_at").first()
             if not latest_run or latest_run.stations_loaded == 0:
+                cls._instance = None
                 raise ApiError(
                     code=ApiErrorCode.FUEL_DATA_NOT_LOADED,
                     message="Fuel station data has not been loaded into the database.",
@@ -67,6 +76,7 @@ class _StationIndexManager:
             )
             data = list(stations)
             if not data:
+                cls._instance = None
                 raise ApiError(
                     code=ApiErrorCode.FUEL_DATA_NOT_LOADED,
                     message="Fuel station data has not been loaded into the database.",
@@ -106,14 +116,6 @@ class _StationIndexManager:
             cls._version = current_version
             cls._is_dirty = False
             return cls._instance
-
-    @classmethod
-    def reset(cls) -> None:
-        """Reset singleton (used in test teardown or testing reloads)."""
-        with cls._lock:
-            cls._instance = None
-            cls._version = None
-            cls._is_dirty = False
 
 
 @receiver(post_save, sender=ImportRun)

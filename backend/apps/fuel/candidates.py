@@ -12,8 +12,7 @@ from apps.common.constants import (
     MAX_CANDIDATES,
     STATION_CORRIDOR_MILES,
 )
-from apps.fuel.types import CandidateStation
-from apps.stations.index import StationIndex
+from apps.fuel.types import CandidateStation, StationSpatialIndex
 
 MILES_PER_DEG_LAT = 69.0
 MILES_PER_DEG_LON = 69.17
@@ -67,7 +66,7 @@ def prune_dominated_candidates(
 def find_candidate_stations(
     route_coords: np.ndarray,
     route_cum_miles: np.ndarray,
-    station_index: StationIndex,
+    station_index: StationSpatialIndex,
     chunk_size_pairs: int = DEFAULT_CHUNK_SIZE_PAIRS,
     apply_prefilter: bool = True,
 ) -> list[CandidateStation]:
@@ -110,6 +109,11 @@ def find_candidate_stations(
     if len(cand_indices) == 0:
         return []
 
+    # Precompute route segment deltas
+    seg_d_lons_miles = (b_lons - a_lons) * MILES_PER_DEG_LON
+    vy = (b_lats - a_lats) * MILES_PER_DEG_LAT  # [M]
+    vy_sq = vy * vy  # [M]
+
     # 2. Chunking over candidate stations
     batch_size = max(1, chunk_size_pairs // num_segs)
     candidates: list[CandidateStation] = []
@@ -124,9 +128,8 @@ def find_candidate_stations(
         # Vectorized equirectangular projection centered on station's latitude
         cos_lat0 = np.cos(np.radians(s_lat))  # [B, 1]
 
-        vx = (b_lons - a_lons) * cos_lat0 * MILES_PER_DEG_LON  # [B, M]
-        vy = (b_lats - a_lats) * MILES_PER_DEG_LAT  # [1, M]
-        v_len_sq = vx * vx + vy * vy  # [B, M]
+        vx = seg_d_lons_miles * cos_lat0  # [B, M]
+        v_len_sq = vx * vx + vy_sq  # [B, M]
 
         wx = (s_lon - a_lons) * cos_lat0 * MILES_PER_DEG_LON  # [B, M]
         wy = (s_lat - a_lats) * MILES_PER_DEG_LAT  # [B, M]
@@ -140,17 +143,16 @@ def find_candidate_stations(
 
         dx = wx - proj_x
         dy = wy - proj_y
-        dist_sq = dx * dx + dy * dy
-        dists = np.sqrt(dist_sq)  # [B, M]
+        dist_sq = dx * dx + dy * dy  # [B, M]
 
-        min_dists = np.min(dists, axis=1)  # [B]
+        min_dist_sq = np.min(dist_sq, axis=1)  # [B]
+        in_corridor = np.flatnonzero(
+            min_dist_sq <= (STATION_CORRIDOR_MILES * STATION_CORRIDOR_MILES)
+        )
 
-        for i in range(B):
-            min_d = float(min_dists[i])
-            if min_d > STATION_CORRIDOR_MILES:
-                continue
-
-            station_dists = dists[i]  # [M]
+        for i in in_corridor:
+            min_d = math.sqrt(float(min_dist_sq[i]))
+            station_dists = np.sqrt(dist_sq[i])  # [M]
             # Loop-back handling: earliest approach within 1 mile of minimum offset
             loopback_mask = station_dists <= (min_d + 1.0)
             qualifying_segs = np.flatnonzero(loopback_mask)

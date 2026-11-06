@@ -219,101 +219,86 @@ def plan_trip(
     display_coords = [[round(float(lon), 5), round(float(lat), 5)] for lat, lon in display_points]
 
     if isinstance(fuel_plan_res, InfeasibleResult):
-        formatted_fuel_plan = {
-            "status": "infeasible",
-            "origin_price_source": None,
-            "stops": [],
-            "totals": {
-                "total_fuel_cost_usd": 0.0,
-                "fuel_consumed_gal": 0.0,
-                "fuel_purchased_gal": 0.0,
-                "leftover_gal": 0.0,
-                "avg_price_per_gal": 0.0,
-                "cost_per_mile_usd": 0.0,
-                "num_stops": 0,
-                "extra_detour_miles": 0.0,
+        raise ApiError(
+            code=ApiErrorCode.NO_FEASIBLE_FUEL_PLAN,
+            message="No refueling plan keeps the vehicle within a 500-mile range on this route.",
+            status_code=422,
+            details={"largest_gap": fuel_plan_res.largest_gap},
+        )
+
+    # Fetch station details in bulk for stops
+    station_ids_in_stops = [s.station_id for s in fuel_plan_res.stops if s.station_id > 0]
+    station_map = {}
+    if station_ids_in_stops:
+        for st in Station.objects.filter(id__in=station_ids_in_stops):
+            station_map[st.id] = {
+                "id": st.id,
+                "opis_id": st.opis_id,
+                "name": st.name,
+                "address": st.address,
+                "city": st.city,
+                "state": st.state,
+                "lat": st.lat,
+                "lon": st.lon,
+                "position_precision": "place_centroid",
+            }
+
+    formatted_stops = []
+    speed_mpm = (primary_route.distance_miles / duration_min) if duration_min > 0 else 1.0
+
+    for idx, stop in enumerate(fuel_plan_res.stops, start=1):
+        st_info = station_map.get(
+            stop.station_id,
+            {
+                "id": stop.station_id,
+                "opis_id": stop.opis_id,
+                "name": stop.name,
+                "address": stop.address,
+                "city": stop.city,
+                "state": stop.state,
+                "lat": stop.lat,
+                "lon": stop.lon,
+                "position_precision": "place_centroid",
             },
-            "infeasible": fuel_plan_res.largest_gap,
-        }
-        formatted_stops = []
-        total_cost_usd = 0.0
-        avg_price = 0.0
-        rec_reason = "no_feasible_route"
-        discarded_routes = [{"route_id": "r1", "why": "infeasible"}]
-    else:
-        # Fetch station details in bulk for stops
-        station_ids_in_stops = [s.station_id for s in fuel_plan_res.stops if s.station_id > 0]
-        station_map = {}
-        if station_ids_in_stops:
-            for st in Station.objects.filter(id__in=station_ids_in_stops):
-                station_map[st.id] = {
-                    "id": st.id,
-                    "opis_id": st.opis_id,
-                    "name": st.name,
-                    "address": st.address,
-                    "city": st.city,
-                    "state": st.state,
-                    "lat": st.lat,
-                    "lon": st.lon,
-                    "position_precision": "place_centroid",
-                }
+        )
+        eta_min = 0 if stop.kind == "origin_fill" else int(round(stop.route_mile / speed_mpm))
 
-        formatted_stops = []
-        speed_mpm = (primary_route.distance_miles / duration_min) if duration_min > 0 else 1.0
+        formatted_stops.append(
+            {
+                "sequence": idx,
+                "kind": "origin_fill" if stop.kind == "origin_fill" else "en_route",
+                "station": st_info,
+                "route_mile": stop.route_mile,
+                "offset_miles": stop.offset_miles,
+                "detour_miles": stop.detour_miles,
+                "arrival_fuel_gal": stop.fuel_after_arrival_gal,
+                "gallons_bought": stop.gallons_bought,
+                "price_per_gal": stop.price_per_gal,
+                "cost_usd": stop.cost_usd,
+                "fuel_after_gal": stop.fuel_after_depart_gal,
+                "eta_minutes_from_start": eta_min,
+            }
+        )
 
-        for idx, stop in enumerate(fuel_plan_res.stops, start=1):
-            st_info = station_map.get(
-                stop.station_id,
-                {
-                    "id": stop.station_id,
-                    "opis_id": stop.opis_id,
-                    "name": stop.name,
-                    "address": stop.address,
-                    "city": stop.city,
-                    "state": stop.state,
-                    "lat": stop.lat,
-                    "lon": stop.lon,
-                    "position_precision": "place_centroid",
-                },
-            )
-            eta_min = 0 if stop.kind == "origin_fill" else int(round(stop.route_mile / speed_mpm))
-
-            formatted_stops.append(
-                {
-                    "sequence": idx,
-                    "kind": "origin_fill" if stop.kind == "origin_fill" else "en_route",
-                    "station": st_info,
-                    "route_mile": stop.route_mile,
-                    "offset_miles": stop.offset_miles,
-                    "detour_miles": stop.detour_miles,
-                    "arrival_fuel_gal": stop.fuel_after_arrival_gal,
-                    "gallons_bought": stop.gallons_bought,
-                    "price_per_gal": stop.price_per_gal,
-                    "cost_usd": stop.cost_usd,
-                    "fuel_after_gal": stop.fuel_after_depart_gal,
-                    "eta_minutes_from_start": eta_min,
-                }
-            )
-
-        formatted_fuel_plan = {
-            "status": fuel_plan_res.status,
-            "origin_price_source": fuel_plan_res.origin_price_source,
-            "stops": formatted_stops,
-            "totals": {
-                "total_fuel_cost_usd": fuel_plan_res.totals.total_fuel_cost_usd,
-                "fuel_consumed_gal": fuel_plan_res.totals.fuel_consumed_gal,
-                "fuel_purchased_gal": fuel_plan_res.totals.fuel_purchased_gal,
-                "leftover_gal": fuel_plan_res.totals.leftover_gal,
-                "avg_price_per_gal": fuel_plan_res.totals.avg_price_per_gal,
-                "cost_per_mile_usd": fuel_plan_res.totals.cost_per_mile_usd,
-                "num_stops": len(formatted_stops),
-                "extra_detour_miles": round(sum(s.detour_miles for s in fuel_plan_res.stops), 2),
-            },
-        }
-        total_cost_usd = fuel_plan_res.totals.total_fuel_cost_usd
-        avg_price = fuel_plan_res.totals.avg_price_per_gal
-        rec_reason = "lowest_cost"
-        discarded_routes = []
+    formatted_fuel_plan = {
+        "status": fuel_plan_res.status,
+        "origin_price_source": fuel_plan_res.origin_price_source,
+        "stops": formatted_stops,
+        "totals": {
+            "total_fuel_cost_usd": fuel_plan_res.totals.total_fuel_cost_usd,
+            "fuel_consumed_gal": fuel_plan_res.totals.fuel_consumed_gal,
+            "fuel_purchased_gal": fuel_plan_res.totals.fuel_purchased_gal,
+            "leftover_gal": fuel_plan_res.totals.leftover_gal,
+            "avg_price_per_gal": fuel_plan_res.totals.avg_price_per_gal,
+            "cost_per_mile_usd": fuel_plan_res.totals.cost_per_mile_usd,
+            "num_stops": len(formatted_stops),
+            "extra_detour_miles": round(sum(s.detour_miles for s in fuel_plan_res.stops), 2),
+        },
+    }
+    total_cost_usd = fuel_plan_res.totals.total_fuel_cost_usd
+    avg_price = fuel_plan_res.totals.avg_price_per_gal
+    rec_reason = "lowest_cost"
+    discarded_routes = []
 
     route_obj = {
         "id": "r1",

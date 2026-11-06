@@ -33,13 +33,7 @@ class PlanView(APIView):
 
         # 2. Validate input schema
         serializer = PlanRequestSerializer(data=request.data)
-        if not serializer.is_valid():
-            raise ApiError(
-                code=ApiErrorCode.VALIDATION_ERROR,
-                message="Request validation failed.",
-                status_code=400,
-                details={"fields": serializer.errors},
-            )
+        serializer.is_valid(raise_exception=True)
 
         validated_data = serializer.validated_data
         start_data = validated_data["start"]

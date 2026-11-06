@@ -2,6 +2,7 @@ from .base import *  # noqa: F403
 
 DEBUG = False
 SECRET_KEY = "test-secret-key-for-testing-only"
+ALLOWED_HOSTS = ["*"]
 
 # Speed up testing password hashing
 PASSWORD_HASHERS = [

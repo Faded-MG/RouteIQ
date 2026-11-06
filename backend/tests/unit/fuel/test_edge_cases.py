@@ -201,3 +201,34 @@ def test_E13_origin_price_state_median_fallback():
     )
     assert isinstance(res, FuelPlan)
     assert res.origin_price_source == "state_median"
+
+
+def test_margin_applies_on_station_arrival():
+    """A plan whose station arrival fuel would be 0.00 gal is never produced.
+
+    Arrival fuel at any refuel stop must be >= safety_margin_units * fuel_unit_gal.
+    """
+    cfg = OptimizerConfig(fuel_unit_gal=0.1, safety_margin_units=10)
+    # Station at 495 miles from origin; with 50 gal tank at 10 mpg,
+    # arrival fuel would be 50 - 49.5 = 0.5 gal, which violates 1.0 gal safety margin.
+    # Therefore, 495 miles must be unreachable directly from origin.
+    cands_unreachable = [
+        CandidateStation(1, 101, 495.0, 0.0, 0.0, 3.00, 40.0, -80.0),
+    ]
+    nodes_unreach = build_fuel_nodes(cands_unreachable, dest_mile=600.0, origin_price=4.00, cfg=cfg)
+    res_unreach = optimize(nodes_unreach, dest_mile=600.0, cfg=cfg, start_fuel_gal=50.0)
+    assert isinstance(res_unreach, InfeasibleResult)
+
+    # Station at 485 miles; arrival fuel is 50 - 48.5 = 1.5 gal >= 1.0 gal safety margin.
+    # Therefore, 485 miles is reachable and feasible.
+    cands_reachable = [
+        CandidateStation(1, 101, 485.0, 0.0, 0.0, 3.00, 40.0, -80.0),
+    ]
+    nodes_reach = build_fuel_nodes(cands_reachable, dest_mile=600.0, origin_price=4.00, cfg=cfg)
+    res_reach = optimize(nodes_reach, dest_mile=600.0, cfg=cfg, start_fuel_gal=50.0)
+    assert isinstance(res_reach, FuelPlan)
+    assert res_reach.status == "ok"
+    # Verify arrival fuel at stop is at least margin
+    refuel_stop = [s for s in res_reach.stops if s.kind == "refuel"][0]
+    expected_margin_gal = cfg.safety_margin_units * cfg.fuel_unit_gal
+    assert refuel_stop.fuel_after_arrival_gal >= expected_margin_gal - 1e-4

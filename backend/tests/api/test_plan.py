@@ -4,6 +4,7 @@ Conforms to docs/PLAN.md T14 and docs/TESTING.md §6, §9.
 """
 
 import json
+import re
 from decimal import Decimal
 from pathlib import Path
 
@@ -11,29 +12,8 @@ import pytest
 from rest_framework.test import APIClient
 
 from apps.planner.serializers import PlanResponseSerializer
-from apps.stations.index import get_station_index
-from apps.stations.management.commands.import_stations import Command as ImportCommand
-from apps.stations.models import Station
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
-
-
-@pytest.fixture(autouse=True)
-def setup_station_data(db):
-    """Ensure database has the full station dataset loaded for API testing."""
-    if Station.objects.count() < 1000:
-        repo_root = Path(__file__).resolve().parent.parent.parent.parent
-        st_data_dir = repo_root / "backend" / "apps" / "stations" / "data"
-        csv_file = repo_root / "data" / "fuel-prices-for-be-assessment.csv"
-        places_file = st_data_dir / "us_places.csv"
-        overrides_file = st_data_dir / "geocode_overrides.csv"
-        cmd = ImportCommand()
-        cmd.handle(
-            csv=str(csv_file),
-            places=str(places_file),
-            overrides=str(overrides_file),
-        )
-    get_station_index(force_reload=True)
 
 
 @pytest.fixture
@@ -184,3 +164,61 @@ def test_plan_validation_error_unknown_key_400(api_client):
     data = response.json()
     assert data["error"]["code"] == "VALIDATION_ERROR"
     assert "unexpected_key" in data["error"]["details"]["fields"]
+
+
+def test_example_response_in_spec_is_valid():
+    """Parses the JSON block of API_SPEC §6 after replacing placeholder ellipsis.
+
+    Conforms to docs/TESTING.md §6 requirement:
+    'test_example_response_in_spec_is_valid (parses the JSON block of API_SPEC §6
+    after replacing "…" placeholders using a documented transformation).'
+    """
+    spec_path = Path(__file__).resolve().parent.parent.parent.parent / "docs" / "API_SPEC.md"
+    content = spec_path.read_text()
+
+    # Extract JSON between ```json and ``` under section 6
+    section_match = re.search(
+        r"## 6\. Complete example response.*?```json\s*(.*?)\s*```", content, re.DOTALL
+    )
+    assert section_match is not None, "Failed to locate section 6 JSON example in API_SPEC.md"
+    raw_json = section_match.group(1)
+
+    # Documented placeholder transformations
+    transformed_json = (
+        raw_json.replace('"…", ', "")
+        .replace('"…"', "[-75.0, 41.0]")
+        .replace(
+            '"…omitted in this documentation example; same Stop schema…"',
+            json.dumps(
+                {
+                    "sequence": 1,
+                    "kind": "origin_fill",
+                    "station": {
+                        "id": 3101,
+                        "opis_id": 68102,
+                        "name": "SUNOCO",
+                        "address": "ST 17",
+                        "city": "Carlstadt",
+                        "state": "NJ",
+                        "lat": 40.8307,
+                        "lon": -74.0910,
+                        "position_precision": "place_centroid",
+                    },
+                    "route_mile": 0.0,
+                    "offset_miles": 0.0,
+                    "detour_miles": 0.0,
+                    "arrival_fuel_gal": 0.0,
+                    "gallons_bought": 4.70,
+                    "price_per_gal": 3.1623,
+                    "cost_usd": 14.86,
+                    "fuel_after_gal": 4.70,
+                    "eta_minutes_from_start": 0,
+                }
+            ),
+        )
+        .replace("9d2f…c41a", "9d2fc41a")
+    )
+
+    data = json.loads(transformed_json)
+    serializer = PlanResponseSerializer(data=data)
+    assert serializer.is_valid(), f"Schema validation failed: {serializer.errors}"

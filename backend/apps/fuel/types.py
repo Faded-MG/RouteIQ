@@ -5,7 +5,19 @@ Pure Python domain types without Django, ORM, or HTTP imports.
 """
 
 from dataclasses import asdict, dataclass
-from typing import Any
+from typing import Any, Protocol
+
+import numpy as np
+
+
+class StationSpatialIndex(Protocol):
+    """Protocol for spatial indexing needed by corridor candidate matching."""
+
+    id: np.ndarray
+    opis_id: np.ndarray
+    lat: np.ndarray
+    lon: np.ndarray
+    price: np.ndarray
 
 
 @dataclass(frozen=True)
