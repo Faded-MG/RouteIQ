@@ -1,0 +1,15 @@
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra -q --strict-markers"
+testpaths = [
+    "backend/tests",
+    "tests",
+]
+pythonpath = [
+    "backend",
+]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+markers = [
+    "perf: latency and performance tests",
+    "slow: slow-running tests including real CSV verification",
+]
