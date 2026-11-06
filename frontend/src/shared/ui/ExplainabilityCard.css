@@ -1,0 +1,29 @@
+@reference "../styles/tailwind.css";
+
+.explainability-card {
+  @apply bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-2.5 text-xs text-slate-400;
+}
+
+.explainability-card__header {
+  @apply font-bold uppercase tracking-wider text-slate-300 text-[11px] flex items-center gap-1.5;
+}
+
+.explainability-card__icon {
+  @apply w-3.5 h-3.5 text-sky-400 shrink-0;
+}
+
+.explainability-card__list {
+  @apply space-y-1.5 leading-relaxed pl-1 list-none m-0;
+}
+
+.explainability-card__item {
+  @apply flex items-start gap-2;
+}
+
+.explainability-card__bullet {
+  @apply text-sky-400 font-bold shrink-0;
+}
+
+.explainability-card__strong {
+  @apply text-slate-200 font-semibold;
+}

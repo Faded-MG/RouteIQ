@@ -1,0 +1,88 @@
+@reference "../../shared/styles/tailwind.css";
+
+.map-viewport-container {
+  @apply w-full h-full relative rounded-2xl overflow-hidden border border-slate-800 shadow-2xl;
+  min-height: 480px;
+}
+
+.map-attribution-pill {
+  @apply absolute bottom-2 right-2 bg-slate-950/80 backdrop-blur-sm text-[10px] text-slate-400 px-3 py-1 rounded-full border border-slate-800 z-[1000] pointer-events-none;
+}
+
+.marker-pin-origin {
+  @apply bg-emerald-500 text-slate-950 font-bold text-xs rounded-full flex items-center justify-center border-2 border-white shadow-lg;
+  width: 28px;
+  height: 28px;
+}
+
+.marker-pin-finish {
+  @apply bg-rose-500 text-white font-bold text-xs rounded-full flex items-center justify-center border-2 border-white shadow-lg;
+  width: 28px;
+  height: 28px;
+}
+
+.marker-pin-stop {
+  @apply bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-full flex items-center justify-center border-2 border-white shadow-lg transition-transform cursor-pointer;
+  width: 28px;
+  height: 28px;
+}
+
+.marker-pin-stop-active {
+  @apply bg-sky-400 ring-4 ring-sky-500/50 scale-125;
+}
+
+.endpoint-popup-card {
+  @apply p-1;
+}
+
+.endpoint-popup-origin-title {
+  @apply font-bold text-emerald-400 text-sm;
+}
+
+.endpoint-popup-dest-title {
+  @apply font-bold text-rose-400 text-sm;
+}
+
+.endpoint-popup-label {
+  @apply text-xs text-slate-300 mt-1;
+}
+
+.stop-popup-card {
+  @apply flex flex-col gap-1.5 p-1;
+}
+
+.stop-popup-header {
+  @apply flex items-center justify-between border-b border-slate-700/80 pb-1.5;
+}
+
+.stop-popup-title {
+  @apply font-bold text-sky-400 text-sm;
+}
+
+.stop-popup-seq {
+  @apply text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40;
+}
+
+.stop-popup-meta {
+  @apply text-xs text-slate-300;
+}
+
+.stop-popup-grid {
+  @apply grid grid-cols-2 gap-2 my-1 text-xs;
+}
+
+.stop-popup-stat {
+  @apply bg-slate-900/60 p-1.5 rounded-lg border border-slate-800;
+}
+
+.stop-popup-label {
+  @apply text-[10px] text-slate-400 block;
+}
+
+.stop-popup-val {
+  @apply font-semibold text-slate-200;
+}
+
+.stop-popup-cost {
+  @apply text-sm font-extrabold text-emerald-400 text-right pt-1 border-t border-slate-700/80;
+}

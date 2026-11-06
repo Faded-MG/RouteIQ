@@ -69,28 +69,45 @@ fuelroute/
 * Python 3.13
 * Node.js 22 LTS (for frontend)
 
-### Running Locally (Backend)
-```bash
-# 1. Clone repository and set up environment
-cp .env.example .env
+### Running Full-Stack Locally
 
-# 2. Start PostgreSQL container
+#### 1. Backend (Django REST API)
+```bash
+# 1. Start PostgreSQL container (runs on port 5433 to avoid host port conflicts)
 docker compose --env-file .env -f deploy/docker-compose.yml up -d db
 
-# 3. Create virtualenv and install dependencies
-python3.13 -m venv .venv
-source .venv/bin/activate
-pip install -r backend/requirements/dev.txt
+# 2. Activate virtual environment
+source backend/.venv/bin/activate
 
-# 4. Run migrations and import stations
+# 3. Run migrations and import station prices (if first run)
 cd backend
 python manage.py migrate
 python manage.py createcachetable
 python manage.py import_stations --csv ../data/fuel-prices-for-be-assessment.csv
 
-# 5. Start development server
+# 4. Start backend API server (listens on http://localhost:8000)
 python manage.py runserver 0.0.0.0:8000
 ```
+
+#### 2. Frontend (React 19 + TypeScript + Vite + Leaflet)
+In a separate terminal window:
+```bash
+cd frontend
+
+# Install dependencies (if first run)
+npm install
+
+# Start Vite dev server with proxy to backend (http://localhost:5173)
+npm run dev
+
+# Run automated frontend test suite
+npm test
+
+# Run strict TypeScript typecheck and production build
+npm run typecheck && npm run build
+```
+
+Open `http://localhost:5173` in your browser. The Vite development server automatically proxies all `/api/*` calls to `http://localhost:8000`.
 
 ---
 
@@ -204,12 +221,12 @@ Measured on macOS Python 3.13 via `backend/tests/perf/measure.py`:
 ## 9. Loom Recording Checklist (5-Minute Walkthrough)
 
 * **0:00–0:30 Overview:** Problem statement, Spotter assessment constraints (500-mile range, 10 MPG, empty start, median prices, place-centroid precision).
-* **0:30–2:30 Live Demo (Postman & Visualizer):**
-  * Open `docs/demo-map.html` in your browser (or use Postman `docs/FuelRoute.postman_collection.json`).
-  * NYC → Chicago: show geometry on Leaflet, 3 fuel stops, totals to the cent, external call counters (`geocoding: 2, routing: 1`).
-  * Repeat request: cache hit, `0` external calls.
-  * Validation error (400) and business rule error (422 `LOCATION_NOT_FOUND`).
-  * Cross-country trip (LA → NYC, ~2,800 miles) with 6 stops, no leg > 500 mi.
+* **0:30–2:30 Live Demo (React Map UI & Postman):**
+  * Open `http://localhost:5173` in your browser (or fallback visualizer `docs/demo-map.html`, or Postman `docs/FuelRoute.postman_collection.json`).
+  * NYC → Chicago: show full route polyline on Leaflet, numbered fuel stops with rich popups, exact totals to the cent, travel time, and detour calculation.
+  * Multi-route alternatives: toggle route alternatives to view comparison table with cost and duration deltas, plus recommendation decision code.
+  * Weather strip: show live route weather risk assessment along the corridor.
+  * Cross-country trip (LA → NYC, ~2,800 miles) with 6 stops, mathematically proving no leg exceeds 500 miles.
 * **2:30–4:15 Code Architecture:**
   * Clean layered architecture: `planner` orchestrates `geo`, `weather`, `stations`, and pure-Python `fuel`.
   * `candidates.py`: vectorized equirectangular projection & dominance pruning.

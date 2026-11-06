@@ -1,0 +1,101 @@
+@reference "../../shared/styles/tailwind.css";
+
+.fuel-plan-card {
+  @apply bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4;
+}
+
+.fuel-plan-empty-card {
+  @apply bg-slate-900 border border-slate-800 rounded-2xl p-10 shadow-xl flex flex-col items-center justify-center text-center;
+}
+
+.fuel-plan-empty-text {
+  @apply text-slate-500 text-sm;
+}
+
+.plan-header {
+  @apply flex items-center justify-between;
+}
+
+.plan-title {
+  @apply text-sm font-bold uppercase tracking-wider text-slate-300;
+}
+
+.plan-badge {
+  @apply text-xs text-sky-400 font-semibold;
+}
+
+.metrics-summary-grid {
+  @apply grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-950 p-4 rounded-xl border border-slate-800/80;
+}
+
+.metric-item {
+  @apply flex flex-col;
+}
+
+.metric-value {
+  @apply text-xl font-extrabold text-slate-100;
+}
+
+.metric-value-primary {
+  @apply text-xl font-extrabold text-emerald-400;
+}
+
+.metric-label {
+  @apply text-xs text-slate-400 mt-0.5;
+}
+
+.plan-aux-summary {
+  @apply flex items-center justify-between text-xs text-slate-400 px-1;
+}
+
+.stops-section {
+  @apply border-t border-slate-800 pt-3;
+}
+
+.stops-section-title {
+  @apply text-xs font-bold text-slate-400 uppercase tracking-wider mb-2;
+}
+
+.stops-scroll-container {
+  @apply flex flex-col gap-2 max-h-96 overflow-y-auto pr-1;
+}
+
+.stop-list-item {
+  @apply bg-slate-950/70 hover:bg-slate-800/60 border border-slate-800 rounded-xl p-3 flex items-start gap-3 transition cursor-pointer;
+}
+
+.stop-list-item-selected {
+  @apply border-sky-500 bg-sky-950/20 ring-1 ring-sky-500;
+}
+
+.stop-badge-num {
+  @apply w-7 h-7 rounded-full bg-amber-500 text-slate-950 font-bold flex items-center justify-center text-xs shrink-0 mt-0.5 shadow-sm;
+}
+
+.stop-info-body {
+  @apply flex-1 min-w-0;
+}
+
+.stop-title-row {
+  @apply flex items-baseline justify-between gap-2;
+}
+
+.stop-station-name {
+  @apply text-sm font-bold text-slate-200 truncate flex items-center;
+}
+
+.stop-origin-tag {
+  @apply text-[10px] ml-2 px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-semibold;
+}
+
+.stop-total-cost {
+  @apply text-sm font-extrabold text-emerald-400 shrink-0;
+}
+
+.stop-location-text {
+  @apply text-xs text-slate-400 truncate mt-0.5;
+}
+
+.stop-stats-row {
+  @apply flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-300 mt-2 pt-2 border-t border-slate-800/80;
+}

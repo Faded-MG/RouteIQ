@@ -1,0 +1,101 @@
+@reference "../../shared/styles/tailwind.css";
+
+.comparison-card {
+  @apply bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-3;
+}
+
+.comparison-header {
+  @apply flex items-center justify-between;
+}
+
+.comparison-title {
+  @apply text-sm font-bold uppercase tracking-wider text-slate-300;
+}
+
+.comparison-count {
+  @apply text-xs text-slate-400;
+}
+
+.recommendation-banner {
+  @apply bg-sky-950/40 border border-sky-800/60 rounded-xl p-3 text-xs text-sky-200 flex items-start gap-2;
+}
+
+.recommendation-icon {
+  @apply w-4 h-4 text-sky-400 shrink-0 mt-0.5;
+}
+
+.recommendation-label {
+  @apply text-sky-300 font-bold;
+}
+
+.table-responsive-wrapper {
+  @apply overflow-x-auto rounded-xl border border-slate-800;
+}
+
+.comparison-table {
+  @apply w-full text-left text-xs text-slate-300;
+}
+
+.table-th {
+  @apply bg-slate-950 py-3 px-3.5 font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 text-[11px];
+}
+
+.table-tr {
+  @apply hover:bg-slate-800/50 transition cursor-pointer border-b border-slate-800/60 last:border-none;
+}
+
+.table-tr-active {
+  @apply bg-sky-950/30 text-white font-medium;
+}
+
+.table-td {
+  @apply py-3 px-3.5 whitespace-nowrap;
+}
+
+.table-td-cost {
+  @apply py-3 px-3.5 whitespace-nowrap font-semibold;
+}
+
+.table-route-id-cell {
+  @apply flex items-center gap-1.5;
+}
+
+.table-route-name {
+  @apply font-bold;
+}
+
+.table-badge-best {
+  @apply text-[10px] bg-sky-500/20 text-sky-300 px-1.5 py-0.5 rounded font-bold border border-sky-500/40;
+}
+
+.table-cost-infeasible {
+  @apply text-rose-400 font-bold;
+}
+
+.table-delta-zero {
+  @apply text-slate-400;
+}
+
+.table-delta-positive {
+  @apply text-amber-400 font-semibold;
+}
+
+.table-duration-delta {
+  @apply text-slate-400 text-[10px] ml-1;
+}
+
+.weather-tag {
+  @apply px-2 py-0.5 rounded text-[10px] font-semibold uppercase;
+}
+
+.weather-tag-severe {
+  @apply bg-rose-950 text-rose-300 border border-rose-800;
+}
+
+.weather-tag-moderate {
+  @apply bg-amber-950 text-amber-300 border border-amber-800;
+}
+
+.weather-tag-low {
+  @apply bg-emerald-950 text-emerald-300 border border-emerald-800;
+}
