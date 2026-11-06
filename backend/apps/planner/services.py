@@ -7,6 +7,7 @@ multi-route selection, ranking, and comparison.
 
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
@@ -36,6 +37,7 @@ from apps.geo.routing import RoutingService
 from apps.planner.selection import EvaluatedRoute, select_and_rank_routes
 from apps.stations.index import StationIndex, get_station_index
 from apps.stations.models import Station
+from apps.weather.providers.open_meteo import WeatherService
 
 
 @dataclass(frozen=True)
@@ -54,6 +56,7 @@ def plan_trip(
     geocoding_service: GeocodingService | None = None,
     routing_service: RoutingService | None = None,
     station_index: StationIndex | None = None,
+    weather_service: WeatherService | None = None,
     weather_overrides: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Orchestrate trip planning and return a dictionary conforming to PlanResponse."""
@@ -129,6 +132,35 @@ def plan_trip(
 
     if not use_alternatives and len(routes) > 1:
         routes = routes[:1]
+
+    # 2b. Weather forecast (optional P1 extra, exactly 1 batched call for all routes)
+    t_wx_start = time.perf_counter()
+    include_weather = bool(options.get("include_weather", True))
+    dep_str = options.get("departure_time")
+    dep_dt = None
+    if dep_str:
+        try:
+            dep_dt = datetime.fromisoformat(dep_str.replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            pass
+
+    wx_service = weather_service or WeatherService()
+    weather_results: dict[str, dict[str, Any]] = {}
+
+    if weather_overrides is not None:
+        weather_results = weather_overrides
+        cache_meta["weather"] = "miss"
+    elif include_weather:
+        route_weather_map, wx_calls = wx_service.get_weather_for_routes(
+            routes, departure_time=dep_dt
+        )
+        external_calls["weather"] += wx_calls
+        cache_meta["weather"] = "miss" if wx_calls > 0 else "unavailable"
+        weather_results = {r_id: rw.to_dict() for r_id, rw in route_weather_map.items()}
+    else:
+        cache_meta["weather"] = "disabled"
+
+    t_weather = int((time.perf_counter() - t_wx_start) * 1000)
 
     # 3. Origin price resolution (identical for all routes from this origin)
     d_lat = np.radians(st_index.lat - start_res.lat)
@@ -328,10 +360,10 @@ def plan_trip(
                 },
             }
 
-        weather_obj = (weather_overrides or {}).get(
+        weather_obj = weather_results.get(
             route_id,
             {
-                "status": "disabled",
+                "status": "disabled" if not include_weather else "unavailable",
                 "risk_level": None,
                 "summary": None,
                 "samples": [],
@@ -403,7 +435,7 @@ def plan_trip(
                 "routing": t_route,
                 "matching": t_match,
                 "optimization": t_opt,
-                "weather": 0,
+                "weather": t_weather,
             },
             "data": {
                 "station_count": len(st_index),
