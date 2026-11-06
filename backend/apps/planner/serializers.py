@@ -91,6 +91,14 @@ class OptionsInputSerializer(StrictSerializer):
         required=False,
         default=None,
     )
+    include_weather = serializers.BooleanField(
+        required=False,
+        default=True,
+    )
+    alternatives = serializers.BooleanField(
+        required=False,
+        default=True,
+    )
 
     def validate_departure_time(self, value):
         if not value:
@@ -194,8 +202,8 @@ class FuelPlanResponseSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=["ok", "no_refuel_needed", "infeasible"])
     origin_price_source = serializers.CharField(allow_null=True)
     stops = StopResponseSerializer(many=True)
-    totals = PlanTotalsSerializer()
-    infeasible = InfeasibleDetailSerializer(required=False)
+    totals = PlanTotalsSerializer(required=False, allow_null=True)
+    infeasible = InfeasibleDetailSerializer(required=False, allow_null=True)
 
 
 class WeatherResponseSerializer(serializers.Serializer):
@@ -219,11 +227,11 @@ class ComparisonRowSerializer(serializers.Serializer):
     route_id = serializers.CharField()
     distance_miles = serializers.FloatField()
     duration_minutes = serializers.IntegerField()
-    total_fuel_cost_usd = serializers.FloatField()
+    total_fuel_cost_usd = serializers.FloatField(allow_null=True)
     num_stops = serializers.IntegerField()
-    avg_price_per_gal = serializers.FloatField()
+    avg_price_per_gal = serializers.FloatField(allow_null=True)
     weather_risk = serializers.CharField(allow_null=True)
-    cost_delta_vs_recommended_usd = serializers.FloatField()
+    cost_delta_vs_recommended_usd = serializers.FloatField(allow_null=True)
     duration_delta_minutes = serializers.IntegerField()
 
 

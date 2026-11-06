@@ -1,11 +1,13 @@
 """Planner orchestration service.
 
 Conforms to docs/API_SPEC.md §4, §6 and docs/ALGORITHM.md §10.
-Coordinates geocoding, routing, candidate matching, optimization, and validation.
+Coordinates geocoding, routing, candidate matching, optimization, validation,
+multi-route selection, ranking, and comparison.
 """
 
 import time
 from dataclasses import dataclass
+from typing import Any
 from uuid import uuid4
 
 import numpy as np
@@ -31,6 +33,7 @@ from apps.geo.geometry import (
     simplify_for_display,
 )
 from apps.geo.routing import RoutingService
+from apps.planner.selection import EvaluatedRoute, select_and_rank_routes
 from apps.stations.index import StationIndex, get_station_index
 from apps.stations.models import Station
 
@@ -51,11 +54,13 @@ def plan_trip(
     geocoding_service: GeocodingService | None = None,
     routing_service: RoutingService | None = None,
     station_index: StationIndex | None = None,
-) -> dict:
+    weather_overrides: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     """Orchestrate trip planning and return a dictionary conforming to PlanResponse."""
     t_start = time.perf_counter()
     options = options_data or {}
     start_fuel_gal = float(options.get("start_fuel_gal", 0.0))
+    use_alternatives = bool(options.get("alternatives", True))
 
     geo_service = geocoding_service or GeocodingService()
     route_service = routing_service or RoutingService()
@@ -115,27 +120,17 @@ def plan_trip(
         start_res.lon,
         finish_res.lat,
         finish_res.lon,
+        alternatives=use_alternatives,
     )
     if not route_cached:
         external_calls["routing"] += 1
     cache_meta["route"] = "hit" if route_cached else "miss"
     t_route = int((time.perf_counter() - t_route_start) * 1000)
 
-    # For P0: evaluate the first route (or all returned routes)
-    # Take first route as primary/recommended
-    primary_route = routes[0]
+    if not use_alternatives and len(routes) > 1:
+        routes = routes[:1]
 
-    # 3. Candidate stations matching
-    t_match_start = time.perf_counter()
-    candidates = find_candidate_stations(
-        primary_route.coords,
-        primary_route.cum_miles,
-        st_index,
-    )
-    t_match = int((time.perf_counter() - t_match_start) * 1000)
-
-    # 4. Origin price resolution
-    # Find nearest station to origin in StationIndex
+    # 3. Origin price resolution (identical for all routes from this origin)
     d_lat = np.radians(st_index.lat - start_res.lat)
     d_lon = np.radians(st_index.lon - start_res.lon)
     a = (
@@ -172,8 +167,7 @@ def plan_trip(
         origin_price = st_index.national_median
         origin_price_source = "state_median"
 
-    # 5. Optimization & Validation
-    t_opt_start = time.perf_counter()
+    # 4. Evaluate each route independently
     cfg = OptimizerConfig(
         mpg=MPG,
         tank_capacity_gal=TANK_CAPACITY_GAL,
@@ -181,53 +175,76 @@ def plan_trip(
         reserve_gal=RESERVE_GAL,
     )
 
-    nodes = build_fuel_nodes(
-        candidates=candidates,
-        dest_mile=primary_route.distance_miles,
-        origin_price=origin_price,
-        cfg=cfg,
-        origin_station_info=origin_station_info,
-    )
+    total_matching_time = 0.0
+    total_opt_time = 0.0
+    evaluated_raw_routes = []
 
-    fuel_plan_res = optimize(
-        nodes=nodes,
-        dest_mile=primary_route.distance_miles,
-        cfg=cfg,
-        start_fuel_gal=start_fuel_gal,
-        origin_price_source=origin_price_source,
-    )
+    for r in routes:
+        t_m0 = time.perf_counter()
+        candidates = find_candidate_stations(r.coords, r.cum_miles, st_index)
+        total_matching_time += time.perf_counter() - t_m0
 
-    # 6. Validate Plan
-    if fuel_plan_res.status in ("ok", "no_refuel_needed"):
-        ok, err = validate_plan(
-            fuel_plan_res,
-            primary_route.distance_miles,
-            cfg,
-            start_fuel_gal,
+        t_o0 = time.perf_counter()
+        nodes = build_fuel_nodes(
+            candidates=candidates,
+            dest_mile=r.distance_miles,
+            origin_price=origin_price,
+            cfg=cfg,
+            origin_station_info=origin_station_info,
         )
-        if not ok:
-            raise ApiError(
-                code=ApiErrorCode.INTERNAL_ERROR,
-                message=f"Optimizer produced unreachable plan: {err}",
-                status_code=500,
+        fuel_plan_res = optimize(
+            nodes=nodes,
+            dest_mile=r.distance_miles,
+            cfg=cfg,
+            start_fuel_gal=start_fuel_gal,
+            origin_price_source=origin_price_source,
+        )
+
+        if fuel_plan_res.status in ("ok", "no_refuel_needed"):
+            ok, err = validate_plan(
+                fuel_plan_res,
+                r.distance_miles,
+                cfg,
+                start_fuel_gal,
             )
-    t_opt = int((time.perf_counter() - t_opt_start) * 1000)
+            if not ok:
+                raise ApiError(
+                    code=ApiErrorCode.INTERNAL_ERROR,
+                    message=f"Optimizer produced unreachable plan: {err}",
+                    status_code=500,
+                )
+        total_opt_time += time.perf_counter() - t_o0
 
-    # 7. Format Output
-    duration_min = primary_route.duration_seconds / 60.0
-    display_points = simplify_for_display(primary_route.coords)
-    display_coords = [[round(float(lon), 5), round(float(lat), 5)] for lat, lon in display_points]
+        display_points = simplify_for_display(r.coords)
+        display_coords = [
+            [round(float(lon), 5), round(float(lat), 5)] for lat, lon in display_points
+        ]
 
-    if isinstance(fuel_plan_res, InfeasibleResult):
+        evaluated_raw_routes.append((r, fuel_plan_res, display_coords))
+
+    # 5. Check if ALL routes are infeasible
+    has_feasible = any(
+        not isinstance(fp, InfeasibleResult) and fp.status in ("ok", "no_refuel_needed")
+        for _, fp, _ in evaluated_raw_routes
+    )
+    if not has_feasible:
+        first_fp = evaluated_raw_routes[0][1]
+        largest_gap = first_fp.largest_gap if isinstance(first_fp, InfeasibleResult) else {}
         raise ApiError(
             code=ApiErrorCode.NO_FEASIBLE_FUEL_PLAN,
             message="No refueling plan keeps the vehicle within a 500-mile range on this route.",
             status_code=422,
-            details={"largest_gap": fuel_plan_res.largest_gap},
+            details={"largest_gap": largest_gap},
         )
 
-    # Fetch station details in bulk for stops
-    station_ids_in_stops = [s.station_id for s in fuel_plan_res.stops if s.station_id > 0]
+    # 6. Bulk fetch station details for all stops
+    station_ids_in_stops = set()
+    for _, fp, _ in evaluated_raw_routes:
+        if not isinstance(fp, InfeasibleResult) and hasattr(fp, "stops"):
+            for s in fp.stops:
+                if s.station_id > 0:
+                    station_ids_in_stops.add(s.station_id)
+
     station_map = {}
     if station_ids_in_stops:
         for st in Station.objects.filter(id__in=station_ids_in_stops):
@@ -243,97 +260,103 @@ def plan_trip(
                 "position_precision": "place_centroid",
             }
 
-    formatted_stops = []
-    speed_mpm = (primary_route.distance_miles / duration_min) if duration_min > 0 else 1.0
+    # 7. Construct EvaluatedRoute objects
+    evaluated_routes: list[EvaluatedRoute] = []
+    for idx, (r, fp, display_coords) in enumerate(evaluated_raw_routes):
+        route_id = f"r{idx + 1}"
+        duration_min = r.duration_seconds / 60.0
+        speed_mpm = (r.distance_miles / duration_min) if duration_min > 0 else 1.0
 
-    for idx, stop in enumerate(fuel_plan_res.stops, start=1):
-        st_info = station_map.get(
-            stop.station_id,
+        if isinstance(fp, InfeasibleResult):
+            formatted_fp = {
+                "status": "infeasible",
+                "origin_price_source": None,
+                "stops": [],
+                "totals": None,
+                "infeasible": fp.largest_gap,
+            }
+        else:
+            formatted_stops = []
+            for s_idx, stop in enumerate(fp.stops, start=1):
+                st_info = station_map.get(
+                    stop.station_id,
+                    {
+                        "id": stop.station_id,
+                        "opis_id": stop.opis_id,
+                        "name": stop.name,
+                        "address": stop.address,
+                        "city": stop.city,
+                        "state": stop.state,
+                        "lat": stop.lat,
+                        "lon": stop.lon,
+                        "position_precision": "place_centroid",
+                    },
+                )
+                eta_min = (
+                    0 if stop.kind == "origin_fill" else int(round(stop.route_mile / speed_mpm))
+                )
+                formatted_stops.append(
+                    {
+                        "sequence": s_idx,
+                        "kind": "origin_fill" if stop.kind == "origin_fill" else "en_route",
+                        "station": st_info,
+                        "route_mile": stop.route_mile,
+                        "offset_miles": stop.offset_miles,
+                        "detour_miles": stop.detour_miles,
+                        "arrival_fuel_gal": stop.fuel_after_arrival_gal,
+                        "gallons_bought": stop.gallons_bought,
+                        "price_per_gal": stop.price_per_gal,
+                        "cost_usd": stop.cost_usd,
+                        "fuel_after_gal": stop.fuel_after_depart_gal,
+                        "eta_minutes_from_start": eta_min,
+                    }
+                )
+
+            formatted_fp = {
+                "status": fp.status,
+                "origin_price_source": fp.origin_price_source,
+                "stops": formatted_stops,
+                "totals": {
+                    "total_fuel_cost_usd": fp.totals.total_fuel_cost_usd,
+                    "fuel_consumed_gal": fp.totals.fuel_consumed_gal,
+                    "fuel_purchased_gal": fp.totals.fuel_purchased_gal,
+                    "leftover_gal": fp.totals.leftover_gal,
+                    "avg_price_per_gal": fp.totals.avg_price_per_gal,
+                    "cost_per_mile_usd": fp.totals.cost_per_mile_usd,
+                    "num_stops": len(formatted_stops),
+                    "extra_detour_miles": round(sum(s.detour_miles for s in fp.stops), 2),
+                },
+            }
+
+        weather_obj = (weather_overrides or {}).get(
+            route_id,
             {
-                "id": stop.station_id,
-                "opis_id": stop.opis_id,
-                "name": stop.name,
-                "address": stop.address,
-                "city": stop.city,
-                "state": stop.state,
-                "lat": stop.lat,
-                "lon": stop.lon,
-                "position_precision": "place_centroid",
+                "status": "disabled",
+                "risk_level": None,
+                "summary": None,
+                "samples": [],
             },
         )
-        eta_min = 0 if stop.kind == "origin_fill" else int(round(stop.route_mile / speed_mpm))
 
-        formatted_stops.append(
-            {
-                "sequence": idx,
-                "kind": "origin_fill" if stop.kind == "origin_fill" else "en_route",
-                "station": st_info,
-                "route_mile": stop.route_mile,
-                "offset_miles": stop.offset_miles,
-                "detour_miles": stop.detour_miles,
-                "arrival_fuel_gal": stop.fuel_after_arrival_gal,
-                "gallons_bought": stop.gallons_bought,
-                "price_per_gal": stop.price_per_gal,
-                "cost_usd": stop.cost_usd,
-                "fuel_after_gal": stop.fuel_after_depart_gal,
-                "eta_minutes_from_start": eta_min,
-            }
+        evaluated_routes.append(
+            EvaluatedRoute(
+                route_id=route_id,
+                original_index=idx,
+                distance_miles=r.distance_miles,
+                duration_minutes=duration_min,
+                display_coords=display_coords,
+                fuel_plan_res=fp,
+                formatted_fuel_plan=formatted_fp,
+                weather=weather_obj,
+            )
         )
 
-    formatted_fuel_plan = {
-        "status": fuel_plan_res.status,
-        "origin_price_source": fuel_plan_res.origin_price_source,
-        "stops": formatted_stops,
-        "totals": {
-            "total_fuel_cost_usd": fuel_plan_res.totals.total_fuel_cost_usd,
-            "fuel_consumed_gal": fuel_plan_res.totals.fuel_consumed_gal,
-            "fuel_purchased_gal": fuel_plan_res.totals.fuel_purchased_gal,
-            "leftover_gal": fuel_plan_res.totals.leftover_gal,
-            "avg_price_per_gal": fuel_plan_res.totals.avg_price_per_gal,
-            "cost_per_mile_usd": fuel_plan_res.totals.cost_per_mile_usd,
-            "num_stops": len(formatted_stops),
-            "extra_detour_miles": round(sum(s.detour_miles for s in fuel_plan_res.stops), 2),
-        },
-    }
-    total_cost_usd = fuel_plan_res.totals.total_fuel_cost_usd
-    avg_price = fuel_plan_res.totals.avg_price_per_gal
-    rec_reason = "lowest_cost"
-    discarded_routes = []
-
-    route_obj = {
-        "id": "r1",
-        "rank": 1,
-        "is_recommended": True,
-        "summary": {
-            "distance_miles": round(primary_route.distance_miles, 1),
-            "duration_minutes": int(round(duration_min)),
-        },
-        "geometry": {
-            "type": "LineString",
-            "coordinates": display_coords,
-        },
-        "fuel_plan": formatted_fuel_plan,
-        "weather": {
-            "status": "disabled",
-            "risk_level": None,
-            "summary": None,
-            "samples": [],
-        },
-    }
-
-    comparison_row = {
-        "route_id": "r1",
-        "distance_miles": round(primary_route.distance_miles, 1),
-        "duration_minutes": int(round(duration_min)),
-        "total_fuel_cost_usd": total_cost_usd,
-        "num_stops": len(formatted_stops),
-        "avg_price_per_gal": avg_price,
-        "weather_risk": None,
-        "cost_delta_vs_recommended_usd": 0.00,
-        "duration_delta_minutes": 0,
-    }
+    # 8. Selection and ranking
+    selection = select_and_rank_routes(evaluated_routes)
 
     t_total = int((time.perf_counter() - t_start) * 1000)
+    t_match = int(total_matching_time * 1000)
+    t_opt = int(total_opt_time * 1000)
 
     return {
         "request_id": str(uuid4()),
@@ -363,14 +386,14 @@ def plan_trip(
             "source": finish_res.source,
             "cached": finish_res.cached,
         },
-        "recommended_route_id": "r1",
+        "recommended_route_id": selection.recommended_route_id,
         "recommendation": {
-            "reason": rec_reason,
-            "considered": 1,
-            "discarded": discarded_routes,
+            "reason": selection.reason,
+            "considered": selection.considered_count,
+            "discarded": selection.discarded,
         },
-        "routes": [route_obj],
-        "comparison": [comparison_row],
+        "routes": selection.ranked_routes,
+        "comparison": selection.comparison,
         "meta": {
             "external_calls": external_calls,
             "cache": cache_meta,
