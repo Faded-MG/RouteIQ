@@ -1,0 +1,62 @@
+OPIS Truckstop ID,Truckstop Name,Address,City,State,Rack ID,Retail Price
+101,Pilot Travel Center,1000 I-80 Blvd,Des Moines,IA,10,3.2590
+101,Pilot Travel Center #45,1000 I-80 Blvd,Des Moines,IA,10,3.2990
+101,Pilot Travel Center,1000 I-80 Blvd,Des Moines,IA,10,3.2790
+102,Love's Travel Stop,2000 Highway Rd,Omaha,NE,11,3.1590
+102,Love's Travel Stop,2000 Highway Rd,Omaha,NE,11,3.1990
+103,TA Express,3000 Turnpike Way,Lincoln,NE,12,3.3490
+104,Flying J Plaza,4000 Platte Dr,North Platte,NE,13,3.0990
+105,Sapp Bros Travel Center,5000 Summit Ave,Cheyenne,WY,14,3.4190
+106,Little America,6000 West Way,Rock Springs,WY,15,3.4990
+107,Maverik Center,7000 Wasatch Rd,Salt Lake City,UT,16,3.5290
+108,Pilot Travel Center,8000 Ruby Dr,Elko,NV,17,3.6490
+109,Love's Travel Stop,9000 Sierra Blvd,Reno,NV,18,3.7990
+110,Chevron Express,10000 Capital Way,Sacramento,CA,19,4.2990
+111,Shell Travel Plaza,11000 Bay St,Oakland,CA,20,4.4990
+112,Valero Station,12000 Mission Blvd,San Francisco,CA,21,4.5990
+113,Speedway Station,13000 Lake Ave,Cleveland,OH,22,3.1990
+114,Sunoco Plaza,14000 Maumee St,Toledo,OH,23,3.2190
+115,Circle K Stop,15000 Bend Way,South Bend,IN,24,3.2490
+116,BP Travel Plaza,16000 River Rd,Davenport,IA,25,3.2890
+117,Casey's General Store,17000 Hawkeye Blvd,Iowa City,IA,26,3.3190
+118,Kwik Star Express,18000 Meadow Ln,Kearney,NE,27,3.1290
+119,Sinclair Station,19000 Prairie Rd,Rawlins,WY,28,3.4590
+120,Exxon Mobil,20000 Bear River Way,Evanston,WY,29,3.5590
+121,Golden Gate Petro,21000 Humboldt Rd,Winnemucca,NV,30,3.6990
+122,Terrible Herbst,22000 Desert Way,Lovelock,NV,31,3.7490
+123,7-Eleven Station,23000 Donner Pass,Truckee,CA,32,4.1990
+124,ARCO Ampm,24000 Valley Blvd,Roseville,CA,33,4.2490
+125,Texaco Plaza,25000 Elm St,Dallas,TX,34,2.9990
+126,Conoco Travel Stop,26000 Mile High Way,Denver,CO,35,3.3890
+127,Mobil Express,27000 Broadway,New York,NY,36,3.6990
+128,Citgo Travel Stop,28000 Michigan Ave,Chicago,IL,37,3.5490
+201,Irving Oil Plaza,100 Trans-Canada Hwy,Toronto,ON,90,3.8500
+202,Petro-Canada,200 Yellowhead Trail,Calgary,AB,91,3.9200
+203,Ultramar Express,300 Autoroute 20,Montreal,QC,92,4.0100
+301,Zero Price Express,101 Zero Rd,Chicago,IL,40,0.0000
+302,Negative Price Stop,102 Negative St,Chicago,IL,40,-2.5000
+303,High Price Station,103 Expensive Ave,Chicago,IL,40,20.0001
+304,Absurd Price Center,104 Crazy Blvd,Chicago,IL,40,99.9900
+305,Corrupt Price Stop,105 Bad Data Way,Chicago,IL,40,N/A
+306,Empty Price Stop,106 Missing Data Rd,Chicago,IL,40,
+401,Lost Island Travel Stop,1 Ocean Trench,Atlantis,FL,50,3.1990
+402,Mystic Mountain Plaza,2 Cloud Peak,Shangri-La,CA,51,3.2990
+129,Pilot Travel Center,100 Main St,Chicago,IL,37,3.4500
+129,Pilot Travel Center,100 Main St,Chicago,IL,37,3.5000
+130,Love's Travel Stop,200 Broad St,Des Moines,IA,10,3.1500
+130,Love's Travel Stop,200 Broad St,Des Moines,IA,10,3.1500
+131,TA Express,300 High St,Omaha,NE,11,3.1800
+132,Flying J Plaza,400 Low St,Lincoln,NE,12,3.2000
+133,Sapp Bros Stop,500 State St,Cheyenne,WY,14,3.4000
+134,Sinclair Stop,600 County Rd,Rawlins,WY,28,3.4200
+135,Little America Stop,700 Interstate Rd,Rock Springs,WY,15,3.4600
+136,Exxon Plaza,800 Canyon Rd,Evanston,WY,29,3.5100
+137,Maverik Center,900 Temple Way,Salt Lake City,UT,16,3.5000
+138,Chevron Express,1000 Desert Way,Elko,NV,17,3.6100
+139,Golden Gate Stop,1100 Humboldt Way,Winnemucca,NV,30,3.6700
+140,Terrible Herbst Stop,1200 Lake Way,Lovelock,NV,31,3.7100
+141,Love's Stop,1300 Truckee Rd,Reno,NV,18,3.7600
+142,Shell Express,1400 Mountain Way,Truckee,CA,32,4.1200
+143,ARCO Stop,1500 Capitol Way,Sacramento,CA,19,4.2100
+144,Valero Stop,1600 Roseville Blvd,Roseville,CA,33,4.2000
+
