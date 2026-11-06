@@ -184,6 +184,18 @@ class RoutingService:
         alternatives: bool = True,
     ) -> list[DrivingRoute]:
         """Fetch and parse driving routes, using RouteCache when available."""
+        routes, _ = self.get_routes_with_meta(lat1, lon1, lat2, lon2, alternatives=alternatives)
+        return routes
+
+    def get_routes_with_meta(
+        self,
+        lat1: float,
+        lon1: float,
+        lat2: float,
+        lon2: float,
+        alternatives: bool = True,
+    ) -> tuple[list[DrivingRoute], bool]:
+        """Fetch and parse driving routes, returning (routes, is_cached)."""
         # 0. Check minimum route distance
         straight_dist = haversine_distance_miles(lat1, lon1, lat2, lon2)
         if straight_dist < MIN_ROUTE_MILES:
@@ -201,8 +213,10 @@ class RoutingService:
         cached = (
             RouteCache.objects.filter(key=key, expires_at__gt=now).order_by("-expires_at").first()
         )
+        is_cached = False
         if cached is not None:
             raw_data = cached.raw_response
+            is_cached = True
         else:
             # 2. Outbound OSRM call
             raw_data = self.provider.get_routes_raw(
@@ -241,4 +255,4 @@ class RoutingService:
                 )
             )
 
-        return parsed_routes
+        return parsed_routes, is_cached

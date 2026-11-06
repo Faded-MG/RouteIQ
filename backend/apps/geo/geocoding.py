@@ -176,6 +176,13 @@ class GeocodingService:
 
     def geocode(self, query: str, which: str = "location") -> GeocodedLocation:
         """Resolve a query string to a valid US location with caching."""
+        loc, _ = self.geocode_with_meta(query, which=which)
+        return loc
+
+    def geocode_with_meta(
+        self, query: str, which: str = "location"
+    ) -> tuple[GeocodedLocation, bool]:
+        """Resolve a query string, returning (location, is_cached)."""
         query_norm = normalize_query(query)
         if not query_norm:
             raise ApiError(
@@ -202,12 +209,15 @@ class GeocodingService:
                     status_code=422,
                     details={"which": which, "query": query},
                 )
-            return GeocodedLocation(
-                query=query,
-                query_norm=query_norm,
-                label=cached.label,
-                lat=cached.lat,
-                lon=cached.lon,
+            return (
+                GeocodedLocation(
+                    query=query,
+                    query_norm=query_norm,
+                    label=cached.label,
+                    lat=cached.lat,
+                    lon=cached.lon,
+                ),
+                True,
             )
 
         # 2. Provider call
@@ -282,10 +292,13 @@ class GeocodingService:
             },
         )
 
-        return GeocodedLocation(
-            query=query,
-            query_norm=query_norm,
-            label=label,
-            lat=lat,
-            lon=lon,
+        return (
+            GeocodedLocation(
+                query=query,
+                query_norm=query_norm,
+                label=label,
+                lat=lat,
+                lon=lon,
+            ),
+            False,
         )
