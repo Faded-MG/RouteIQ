@@ -14,6 +14,7 @@ docker compose --env-file .env -f deploy/docker-compose.yml up -d db
 python3.13 -m venv .venv && source .venv/bin/activate
 pip install -r backend/requirements/dev.txt
 cd backend
+# Host-run Django connects to localhost:5433 (mapped from container port 5432 via DB_HOST_PORT to avoid conflicts)
 python manage.py migrate
 python manage.py createcachetable
 python manage.py import_stations --csv ../data/fuel-prices-for-be-assessment.csv
@@ -36,7 +37,7 @@ Defined once in `.env.example` (dummy values), read by Django settings and Compo
 | `DJANGO_ALLOWED_HOSTS` | `example.com` | prod | Comma-separated. |
 | `CORS_ALLOWED_ORIGINS` | `https://example.com` | no | Empty = same-origin only. |
 | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | `fuelroute` / `fuelroute` / random | yes | DB credentials. |
-| `POSTGRES_HOST` / `POSTGRES_PORT` | `db` / `5432` | yes | |
+| `POSTGRES_HOST` / `POSTGRES_PORT` / `DB_HOST_PORT` | `localhost` / `5433` / `5433` | yes | Host-run dev uses `localhost:5433` (mapped via `DB_HOST_PORT` to avoid host 5432 conflict); container web uses `db:5432`. |
 | `OSRM_BASE_URL` | `https://router.project-osrm.org` | no | Swap for self-hosted (`http://osrm:5000`). |
 | `NOMINATIM_BASE_URL` | `https://nominatim.openstreetmap.org` | no | |
 | `OPEN_METEO_BASE_URL` | `https://api.open-meteo.com` | no | |
@@ -110,7 +111,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-fuelroute}
       POSTGRES_USER: ${POSTGRES_USER:-fuelroute}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fuelroute}
-    ports: ["127.0.0.1:5432:5432"]
+    ports: ["127.0.0.1:${DB_HOST_PORT:-5433}:5432"]
     volumes: [dbdata:/var/lib/postgresql/data]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
@@ -120,7 +121,7 @@ services:
   web:
     build: ../backend
     env_file: ../.env
-    environment: { POSTGRES_HOST: db, DJANGO_SETTINGS_MODULE: config.settings.dev }
+    environment: { POSTGRES_HOST: db, POSTGRES_PORT: 5432, DJANGO_SETTINGS_MODULE: config.settings.dev }
     depends_on: { db: { condition: service_healthy } }
     ports: ["127.0.0.1:8000:8000"]
 volumes:
