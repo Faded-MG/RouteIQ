@@ -77,7 +77,9 @@ Facts below are from the providers' public pages as searched on 2026-11-05. Item
 
 ```
 fuelroute/
-├── AGENTS.md  PLAN.md  ARCHITECTURE.md  API_SPEC.md  ALGORITHM.md  TESTING.md  DEPLOYMENT.md
+├── AGENTS.md  ASSESSMENT.md
+├── docs/{ALGORITHM.md, API_SPEC.md, ARCHITECTURE.md, DEPLOYMENT.md, PLAN.md, TESTING.md}
+├── scripts/{record_fixtures.py, live_smoke.py}
 ├── backend/
 │   ├── manage.py  pyproject.toml  requirements/{base,dev}.txt  Dockerfile
 │   ├── config/{settings/{base,dev,prod,test}.py, urls.py, wsgi.py}
@@ -251,7 +253,7 @@ Cache failures are logged and bypassed; they never fail a request. Plans contain
 
 ### 6.8 Rate limiting and throttling
 * Inbound: DRF throttle `AnonRateThrottle` 30/min per IP on `/routes/plan` (configurable).
-* Outbound Nominatim: global 1 request/s using `pg_advisory_lock(<constant>)` + `time.sleep` to enforce ≥ 1.05 s between calls (timestamp in the cache table). If the lock isn't acquired within 3 s → `UPSTREAM_UNAVAILABLE`.
+* Outbound Nominatim: global 1 request/s using `pg_advisory_lock(<constant>)` to reserve a scheduled execution timestamp under the lock (setting `next_available = max(now, last_reserved + 1.05s)` in the cache/DB table and immediately releasing the lock). Sleeping until `next_available` and executing the HTTP call occur outside the lock to prevent worker starvation. If the lock isn't acquired within 3 s → `UPSTREAM_UNAVAILABLE`.
 
 ## 7. Backend layers
 * **Views** (thin): parse → `PlanRequestSerializer` → `plan_trip()` → `PlanResponseSerializer`. No logic.

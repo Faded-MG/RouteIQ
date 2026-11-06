@@ -10,12 +10,13 @@ FuelRoute is a Django REST API (with a React map UI) built for Spotter's Backend
 
 | Topic | Document | Precedence |
 |---|---|---|
-| Numbers, equations, optimizer behavior | `ALGORITHM.md` | 1 (wins on any numeric conflict) |
-| Request/response/error contracts | `API_SPEC.md` | 2 |
-| Structure, technology, data model, caching | `ARCHITECTURE.md` | 3 |
-| Order of work, acceptance criteria | `PLAN.md` | 4 |
-| Tests | `TESTING.md` | 5 |
-| Build, run, deploy | `DEPLOYMENT.md` | 6 |
+| Assessment requirements | `ASSESSMENT.md` | 0 (highest authority; wins on any conflict) |
+| Numbers, equations, optimizer behavior | `docs/ALGORITHM.md` | 1 (wins on any numeric conflict) |
+| Request/response/error contracts | `docs/API_SPEC.md` | 2 |
+| Structure, technology, data model, caching | `docs/ARCHITECTURE.md` | 3 |
+| Order of work, acceptance criteria | `docs/PLAN.md` | 4 |
+| Tests | `docs/TESTING.md` | 5 |
+| Build, run, deploy | `docs/DEPLOYMENT.md` | 6 |
 | Agent behavior | `AGENTS.md` | applies to everything |
 
 If two documents disagree, stop and report it (§11). Do not choose silently.
@@ -23,7 +24,7 @@ If two documents disagree, stop and report it (§11). Do not choose silently.
 ## 3. Mandatory start-of-session routine
 
 1. `git status`, `git log --oneline -20`, list the repository tree.
-2. Read all seven documents. Read the files of the area you will touch.
+2. Read all eight documents (ASSESSMENT.md, AGENTS.md, and the six in `docs/`). Read the files of the area you will touch.
 3. State which task ID (PLAN.md) you are about to do and its acceptance criteria, then begin. If the repository state contradicts the plan (missing prerequisite task, unexpected files), stop and report.
 
 ## 4. Approved technology stack (nothing else without approval)
@@ -46,7 +47,7 @@ Facts in the documents marked ⚠ or "verify" (Django series, Python support, `a
 
 ## 5. Directory structure
 
-Exactly as ARCHITECTURE.md §4. Do not create top-level directories or new Django apps not listed there. Dependency direction: `planner → fuel, geo, weather, stations → common`; `apps/fuel` has no Django, ORM, HTTP or file imports (enforced by `tests/unit/test_architecture.py`).
+Exactly as ARCHITECTURE.md §4 (blueprints in `docs/`). Do not create top-level directories or new Django apps not listed there. Dependency direction: `planner → fuel, geo, weather, stations → common`; `apps/fuel` has no Django, ORM, HTTP or file imports (enforced by `tests/unit/test_architecture.py`).
 
 ## 6. Coding conventions
 
