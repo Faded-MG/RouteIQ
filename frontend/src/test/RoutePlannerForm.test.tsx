@@ -95,3 +95,4 @@ describe("RoutePlannerForm Component", () => {
     expect(screen.getByLabelText(/Destination/i)).toBeDisabled();
   });
 });
+

@@ -85,3 +85,4 @@ describe("ComparisonTable Component", () => {
     expect(handleSelectRoute).toHaveBeenCalledWith("r2");
   });
 });
+
