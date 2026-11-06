@@ -116,7 +116,27 @@ def benchmark_memory_and_e2e() -> None:
     }
 
     durations = []
-    with patch("apps.geo.routing.OSRMRoutingProvider.get_routes_raw", return_value=nyc_chi_fixture):
+    mock_weather = [
+        {
+            "hourly": {
+                "time": ["2026-11-06T12:00"],
+                "temperature_2m": [60.0],
+                "precipitation": [0.0],
+                "weather_code": [0],
+                "wind_speed_10m": [5.0],
+                "wind_gusts_10m": [10.0],
+                "visibility": [16000.0],
+            }
+        }
+    ] * 50
+
+    with (
+        patch("apps.geo.routing.OSRMRoutingProvider.get_routes_raw", return_value=nyc_chi_fixture),
+        patch(
+            "apps.weather.providers.open_meteo.OpenMeteoProvider.fetch_forecasts_batched",
+            return_value=mock_weather,
+        ),
+    ):
         # Warmup
         client.post("/api/v1/routes/plan", data=payload, format="json")
 

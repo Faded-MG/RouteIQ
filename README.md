@@ -204,19 +204,20 @@ Measured on macOS Python 3.13 via `backend/tests/perf/measure.py`:
 ## 9. Loom Recording Checklist (5-Minute Walkthrough)
 
 * **0:00–0:30 Overview:** Problem statement, Spotter assessment constraints (500-mile range, 10 MPG, empty start, median prices, place-centroid precision).
-* **0:30–2:30 Live Demo (Postman):**
-  * NYC → Chicago: show geometry, 3 fuel stops, totals to the cent, external call counters (`geocoding: 2, routing: 1`).
+* **0:30–2:30 Live Demo (Postman & Visualizer):**
+  * Open `docs/demo-map.html` in your browser (or use Postman `docs/FuelRoute.postman_collection.json`).
+  * NYC → Chicago: show geometry on Leaflet, 3 fuel stops, totals to the cent, external call counters (`geocoding: 2, routing: 1`).
   * Repeat request: cache hit, `0` external calls.
   * Validation error (400) and business rule error (422 `LOCATION_NOT_FOUND`).
   * Cross-country trip (LA → NYC, ~2,800 miles) with 6 stops, no leg > 500 mi.
 * **2:30–4:15 Code Architecture:**
-  * Clean onion architecture: `planner` orchestrates `geo`, `stations`, and pure-Python `fuel`.
+  * Clean layered architecture: `planner` orchestrates `geo`, `weather`, `stations`, and pure-Python `fuel`.
   * `candidates.py`: vectorized equirectangular projection & dominance pruning.
   * `optimizer.py`: exact dynamic programming with vectorized closed-form transitions.
   * `validator.py`: independent unsnapped float re-simulation.
 * **4:15–5:00 Quality & Test Results:**
-  * Test suite execution: 100% pass across unit, oracle, acceptance, and API tests.
-  * Coverage reports (>90% overall, >95% in `apps/fuel`).
+  * Test suite execution: 149 passed in ~2.5 min across unit, oracle, acceptance, weather, and API tests.
+  * Coverage reports (95% overall, 100% in `optimizer.py` and `services.py`).
 
 * **Corridor & Detours:** 10.0-mile perpendicular corridor filter; detours modeled conservatively as $2 \times 1.3 \times \text{offset}$ with fuel burned priced into the objective.
 * **Station Geocoding:** The raw CSV contains city/state text with highway descriptions. Station coordinates are located as city centroids (`geocode_precision = "place_centroid"`).

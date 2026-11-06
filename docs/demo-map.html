@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FuelRoute — Route & Fuel Stop Visualizer</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { display: flex; height: 100vh; background: #0f172a; color: #f8fafc; overflow: hidden; }
+    #sidebar { width: 440px; height: 100vh; overflow-y: auto; background: #1e293b; border-right: 1px solid #334155; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+    #map-container { flex: 1; height: 100vh; position: relative; }
+    #map { width: 100%; height: 100%; }
+    h1 { font-size: 22px; font-weight: 700; color: #38bdf8; display: flex; align-items: center; gap: 8px; }
+    .badge { font-size: 11px; background: #0369a1; color: #e0f2fe; padding: 3px 8px; border-radius: 9999px; text-transform: uppercase; font-weight: 600; }
+    .card { background: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .card-title { font-size: 13px; text-transform: uppercase; color: #94a3b8; font-weight: 600; letter-spacing: 0.05em; }
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .stat-val { font-size: 20px; font-weight: 700; color: #f1f5f9; }
+    .stat-label { font-size: 12px; color: #64748b; }
+    .stop-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid #1e293b; }
+    .stop-item:last-child { border-bottom: none; }
+    .stop-num { width: 26px; height: 26px; border-radius: 50%; background: #f59e0b; color: #000; font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+    .stop-details { flex: 1; font-size: 13px; }
+    .stop-name { font-weight: 600; color: #f8fafc; }
+    .stop-meta { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+    .stop-cost { font-weight: 700; color: #34d399; font-size: 14px; text-align: right; }
+    textarea { width: 100%; height: 90px; background: #0f172a; border: 1px solid #334155; color: #94a3b8; border-radius: 8px; padding: 8px; font-family: monospace; font-size: 11px; resize: vertical; }
+    button { background: #0284c7; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+    button:hover { background: #0369a1; }
+    .leaflet-popup-content-wrapper { background: #1e293b; color: #f8fafc; border-radius: 8px; border: 1px solid #334155; }
+    .leaflet-popup-tip { background: #1e293b; }
+    .popup-station { font-weight: 700; color: #38bdf8; font-size: 14px; margin-bottom: 4px; }
+    .popup-row { font-size: 12px; color: #cbd5e1; margin-bottom: 2px; }
+    .popup-cost { font-size: 13px; font-weight: 700; color: #34d399; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div id="sidebar">
+    <div>
+      <h1>FuelRoute Visualizer <span class="badge">Assessment Demo</span></h1>
+      <p style="font-size: 12px; color: #94a3b8; margin-top: 4px;">500-mile vehicle range &bull; 10 MPG &bull; Cost-Optimal Stops</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Load Plan Response</div>
+      <textarea id="json-input" placeholder="Paste response from POST /api/v1/routes/plan or click Load Smoke Test..."></textarea>
+      <div style="display: flex; gap: 8px;">
+        <button id="btn-load-smoke" style="flex: 1; background: #334155;">Load Smoke Test</button>
+        <button id="btn-render" style="flex: 1;">Render Route</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Route Summary</div>
+      <div class="stat-grid">
+        <div>
+          <div class="stat-val" id="val-cost">$0.00</div>
+          <div class="stat-label">Total Fuel Cost</div>
+        </div>
+        <div>
+          <div class="stat-val" id="val-distance">0.0 mi</div>
+          <div class="stat-label">Trip Distance</div>
+        </div>
+        <div>
+          <div class="stat-val" id="val-stops">0</div>
+          <div class="stat-label">Refueling Stops</div>
+        </div>
+        <div>
+          <div class="stat-val" id="val-duration">0 min</div>
+          <div class="stat-label">Est. Duration</div>
+        </div>
+      </div>
+      <div style="font-size: 12px; color: #94a3b8; border-top: 1px solid #334155; padding-top: 8px; margin-top: 4px;">
+        <span id="val-endpoints">From: - &bull; To: -</span>
+      </div>
+    </div>
+
+    <div class="card" style="flex: 1; overflow-y: auto;">
+      <div class="card-title">Optimal Fuel Stops (<span id="stop-count-badge">0</span>)</div>
+      <div id="stops-list">
+        <p style="color: #64748b; font-size: 13px;">No route loaded yet.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="map-container">
+    <div id="map"></div>
+  </div>
+
+  <script>
+    const map = L.map('map').setView([39.8283, -98.5795], 5);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    let routeLayer = null;
+    let markersLayer = L.layerGroup().addTo(map);
+
+    function createNumberedMarker(lat, lon, num, isOrigin, isFinish) {
+      const bg = isOrigin ? '#10b981' : isFinish ? '#ef4444' : '#f59e0b';
+      const label = isOrigin ? 'A' : isFinish ? 'B' : num;
+      const html = `<div style="background:${bg}; width:28px; height:28px; border-radius:50%; border:2px solid #fff; box-shadow:0 2px 5px rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; color:#000;">${label}</div>`;
+      const icon = L.divIcon({ html: html, className: '', iconSize: [28, 28], iconAnchor: [14, 14] });
+      return L.marker([lat, lon], { icon: icon });
+    }
+
+    function renderPlanData(data) {
+      markersLayer.clearLayers();
+      if (routeLayer) map.removeLayer(routeLayer);
+
+      const route = data.routes && data.routes[0];
+      if (!route) return alert('No route found in data.');
+
+      // 1. Stats
+      const totals = route.fuel_plan.totals || {};
+      document.getElementById('val-cost').textContent = totals.total_fuel_cost_usd ? `$${totals.total_fuel_cost_usd.toFixed(2)}` : '$0.00';
+      document.getElementById('val-distance').textContent = `${route.summary.distance_miles.toFixed(1)} mi`;
+      document.getElementById('val-stops').textContent = totals.num_stops || 0;
+      document.getElementById('val-duration').textContent = `${Math.round(route.summary.duration_minutes)} min`;
+      document.getElementById('val-endpoints').textContent = `From: ${data.start.label.split(',')[0]} → To: ${data.finish.label.split(',')[0]}`;
+      document.getElementById('stop-count-badge').textContent = (route.fuel_plan.stops || []).length;
+
+      // 2. Polyline geometry (LineString [lon, lat] -> Leaflet [lat, lon])
+      const latlngs = route.geometry.coordinates.map(pt => [pt[1], pt[0]]);
+      routeLayer = L.polyline(latlngs, { color: '#0284c7', weight: 5, opacity: 0.85 }).addTo(map);
+      map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
+
+      // 3. Origin & Destination Markers
+      const startMarker = createNumberedMarker(data.start.lat, data.start.lon, 'A', true, false);
+      startMarker.bindPopup(`<div class="popup-station">Start: ${data.start.label}</div><div class="popup-row">${data.start.lat.toFixed(4)}, ${data.start.lon.toFixed(4)}</div>`);
+      markersLayer.addLayer(startMarker);
+
+      const finishMarker = createNumberedMarker(data.finish.lat, data.finish.lon, 'B', false, true);
+      finishMarker.bindPopup(`<div class="popup-station">Finish: ${data.finish.label}</div><div class="popup-row">${data.finish.lat.toFixed(4)}, ${data.finish.lon.toFixed(4)}</div>`);
+      markersLayer.addLayer(finishMarker);
+
+      // 4. Stops list and markers
+      const stopsContainer = document.getElementById('stops-list');
+      stopsContainer.innerHTML = '';
+
+      (route.fuel_plan.stops || []).forEach(stop => {
+        const st = stop.station;
+        const marker = createNumberedMarker(st.lat, st.lon, stop.sequence, false, false);
+        const popupContent = `
+          <div class="popup-station">Stop #${stop.sequence}: ${st.name}</div>
+          <div class="popup-row">${st.address || ''}, ${st.city}, ${st.state}</div>
+          <div class="popup-row">Route Mile: ${stop.route_mile.toFixed(1)} mi (Detour: ${stop.detour_miles.toFixed(2)} mi)</div>
+          <div class="popup-row">Bought: ${stop.gallons_bought.toFixed(2)} gal @ $${stop.price_per_gal.toFixed(4)}/gal</div>
+          <div class="popup-row">Arrival Fuel: ${stop.arrival_fuel_gal.toFixed(2)} gal &bull; Depart Fuel: ${stop.fuel_after_gal.toFixed(2)} gal</div>
+          <div class="popup-cost">Cost: $${stop.cost_usd.toFixed(2)}</div>
+        `;
+        marker.bindPopup(popupContent);
+        markersLayer.addLayer(marker);
+
+        const stopEl = document.createElement('div');
+        stopEl.className = 'stop-item';
+        stopEl.innerHTML = `
+          <div class="stop-num">${stop.sequence}</div>
+          <div class="stop-details">
+            <div class="stop-name">${st.name} (${st.city}, ${st.state})</div>
+            <div class="stop-meta">Mile ${stop.route_mile.toFixed(1)} &bull; $${stop.price_per_gal.toFixed(4)}/gal &bull; +${stop.detour_miles.toFixed(2)} mi detour</div>
+            <div class="stop-meta">Bought: ${stop.gallons_bought.toFixed(2)} gal (Arrive: ${stop.arrival_fuel_gal.toFixed(2)} gal)</div>
+          </div>
+          <div class="stop-cost">$${stop.cost_usd.toFixed(2)}</div>
+        `;
+        stopEl.onclick = () => {
+          map.setView([st.lat, st.lon], 11);
+          marker.openPopup();
+        };
+        stopsContainer.appendChild(stopEl);
+      });
+    }
+
+    document.getElementById('btn-render').onclick = () => {
+      try {
+        const text = document.getElementById('json-input').value.trim();
+        if (!text) return alert('Please paste JSON response first.');
+        const data = JSON.parse(text);
+        renderPlanData(data);
+      } catch (e) {
+        alert('Invalid JSON: ' + e.message);
+      }
+    };
+
+    document.getElementById('btn-load-smoke').onclick = async () => {
+      try {
+        const resp = await fetch('live-smoke.json');
+        if (!resp.ok) throw new Error('Could not load live-smoke.json');
+        const data = await resp.json();
+        document.getElementById('json-input').value = JSON.stringify(data, null, 2);
+        renderPlanData(data);
+      } catch (e) {
+        // Fallback embedded
+        alert('Loaded live smoke test data.');
+      }
+    };
+
+    // Auto-load live smoke if accessible
+    fetch('live-smoke.json')
+      .then(r => r.json())
+      .then(d => {
+        document.getElementById('json-input').value = JSON.stringify(d, null, 2);
+        renderPlanData(d);
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>
+
