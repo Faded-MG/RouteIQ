@@ -353,6 +353,13 @@ def optimize(
         fuel_sim -= half_detour_gal
         arrival_gal = max(0.0, fuel_sim)
 
+        # Cap purchase to prevent tank overfill due to float distance telescoping
+        max_fillable = max(0.0, cfg.tank_capacity_gal - arrival_gal)
+        if gal_bought > max_fillable:
+            gal_bought = max_fillable
+        # Floor to 2 decimal places so rounded purchase never exceeds capacity
+        gal_bought = math.floor(gal_bought * 100.0) / 100.0
+
         fuel_sim += gal_bought
         after_purchase_gal = fuel_sim
 
