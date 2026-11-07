@@ -49,7 +49,7 @@ Defined once in `.env.example` (dummy values), read by Django settings and Compo
 | `IMAGE_TAG` | `v1.0.0` | prod | Image tag used by Compose. |
 | `GHCR_OWNER` | `owner` (lowercase) | prod | Registry namespace. |
 | `DOMAIN` | `example.com` | prod | Used by Nginx and certbot scripts. |
-| `VITE_API_BASE_URL`, `VITE_TILE_URL`, `VITE_TILE_ATTRIBUTION` | `/api/v1`, `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, `© OpenStreetMap contributors` | build args | Frontend; OSM tiles are for dev/demo only (ARCHITECTURE §3). |
+| `VITE_API_BASE_URL`, `VITE_MAP_STYLE_URL` | `/api/v1`, `https://tiles.openfreemap.org/styles/positron` | build args | Frontend; MapLibre loads the OpenFreeMap vector style, with attribution handled by the library. |
 
 ## 3. Dockerfiles
 
@@ -78,8 +78,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 ARG VITE_API_BASE_URL=/api/v1
-ARG VITE_TILE_URL=https://tile.openstreetmap.org/{z}/{x}/{y}.png
-ARG VITE_TILE_ATTRIBUTION="© OpenStreetMap contributors"
+ARG VITE_MAP_STYLE_URL=https://tiles.openfreemap.org/styles/positron
 RUN npm run build
 
 FROM nginx:1.27-alpine
@@ -221,8 +220,8 @@ server {
   add_header X-Content-Type-Options nosniff always;
   add_header X-Frame-Options DENY always;
   add_header Referrer-Policy strict-origin-when-cross-origin always;
-  # CSP allows the tile host; adjust img-src if VITE_TILE_URL changes.
-  add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; style-src 'self' 'unsafe-inline'; connect-src 'self'" always;
+  # CSP allows the MapLibre style and worker requests; adjust if VITE_MAP_STYLE_URL changes.
+  add_header Content-Security-Policy "default-src 'self'; worker-src 'self' blob:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' https://tiles.openfreemap.org; connect-src 'self' https://tiles.openfreemap.org" always;
 
   client_max_body_size 8k;
   gzip on; gzip_types application/json text/css application/javascript image/svg+xml;

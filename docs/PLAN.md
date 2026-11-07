@@ -20,15 +20,15 @@ Companion documents: ARCHITECTURE.md (structure), API_SPEC.md (contracts), ALGOR
 | 3 | Nov 7 | Phase 5 (P1: alternatives, weather, Docker/CI, UI) → record Loom → submit | ≈ 8.75 + 1.5 Loom/README | Tags `v0.2.0` (backend P1) and `v0.3.0` (UI); submission by 18:00 |
 | after | — | Phase 6 (P2 deployment) and P3 | ≈ 5.75 | Does not delay submission |
 
-**Cut rule.** If Day 2 ends without `v0.1.0`, Day 3 is spent only on P0 completion, tests and the Loom. P1 items are dropped in this order: UI polish → weather → alternatives. Do not drop T21–T24 before weather. Never drop tests or the README.
+**Cut rule.** If Day 2 ends without `v0.1.0`, Day 3 is spent only on P0 completion, tests and the Loom. P1 items are dropped in this order: UI polish → weather → alternatives. Do not drop U1–U5 before weather. Never drop tests or the README.
 
-**"Return a map of the route" interpretation.** The assessment's API must return the route; the response carries GeoJSON geometry (P0) which any map renders. T21–T24 provide an actual Leaflet map (P1) and are scheduled on Day 3 morning before polish tasks. If time is short, the README documents pasting `routes[0].geometry` into https://geojson.io as the fallback viewer.
+**"Return a map of the route" interpretation.** The assessment's API must return the route; the response carries GeoJSON geometry (P0) which any map renders. U1–U5 provide the MapLibre UI (P1) and are scheduled after `v0.1.0` is tagged and pushed. If time is short, the README documents pasting `routes[0].geometry` into https://geojson.io as the fallback viewer.
 
 ## 3. Scope
 
 ### In scope
 P0 (mandatory): CSV import (US only, de-duplicated, located) · geocoding of two locations · one OSRM call · route geometry and distance · station matching along the route · fuel optimization (exact DP, 500 mi, 10 MPG) · stops, purchases, total cost · input validation · error envelope · caching of geocode and route · automated tests · README · Loom/Postman material.
-P1: up to 3 alternative routes and comparison · weather sampling/interpretation · plan cache · structured logging · health endpoints · `/config` · Docker + Compose (dev) · GitHub Actions CI · React + TypeScript + Tailwind + Leaflet UI · performance measurement script.
+P1: up to 3 alternative routes and comparison · weather sampling/interpretation · plan cache · structured logging · health endpoints · `/config` · Docker + Compose (dev) · GitHub Actions CI · React + TypeScript + Tailwind + MapLibre UI · performance measurement script.
 P2: production Compose + Nginx + HTTPS · GitHub Actions deploy · backups/rollback scripts · self-hosted OSRM profile · `GET /stations`.
 P3: exit-level station geocoding · PostGIS · Redis · ORS provider · cache pre-warming · accounts/history.
 
@@ -69,8 +69,8 @@ flowchart LR
   T15-->T16-->T17
   T15-->T18
   T15-->T19-->T20
-  T15-->T21-->T22-->T23-->T24-->T25
-  T16-->T22
+  T15-->U1-->U2-->U3-->U4-->U5
+  T16-->U2
   T20-->T26-->T27
   T20-->T28
 ```
@@ -138,11 +138,11 @@ Rules: one task at a time; every task ends with its listed verification run, a c
 | T18 | Plan cache + `createcachetable`; cache key includes data version; not cached when weather unavailable | T15 | 0.5 | Repeat request: 0 external calls, `meta.cache.plan="hit"`, p95 < 50 ms | API test |
 | T19 | JSON logging, per-stage timings in `meta.timings_ms`, `GET /health/ready`, `GET /config`, inbound throttle | T15 | 0.5 | Log line per request has all fields of ARCHITECTURE §10; 31st request/min from one IP → 429 with `Retry-After` | tests |
 | T20 | `backend/Dockerfile`, dev `docker-compose.yml` (db + web), `.github/workflows/ci.yml` (TESTING §12) | T19 | 1.25 | `docker compose up --build` then `curl /api/v1/health/ready` → 200 after `import_stations`; CI green on a push | local run, Actions run |
-| T21 | Frontend scaffold (Vite, TS strict, Tailwind v4, co-located CSS convention, Vitest, MSW, ESLint) | T15 | 0.5 | `npm run lint && npm run typecheck && npm test && npm run build` pass | commands |
-| T22 | `RoutePlannerForm`, `useRoutePlan`, typed API client, error-code → message map | T21, T16 | 0.75 | Form validates like API_SPEC §4.1; loading/error states; types parse API_SPEC §6 fixture | Vitest |
-| T23 | `RouteMap` (Leaflet): routes, selection, start/finish, numbered stop markers + popups, weather dots, attribution | T22 | 1.0 | Renders with fixture; stop popups show station, price, gallons, cost; attribution visible | Vitest + manual screenshot |
-| T24 | `FuelPlanPanel`, `CostBreakdown`, `WeatherStrip`, `ComparisonTable` | T23 | 1.0 | Totals equal API numbers; weather-unavailable state; keyboard-accessible route selection | Vitest |
-| T25 | Frontend test hardening to coverage target + final backend/frontend integration smoke | T24 | 0.75 | Coverage ≥ 70% lines (TESTING §11) | `npm run test:coverage` |
+| U1 | Tokens, panel shell (desktop + mobile sheet), `usePlannerFlow` reducer, `RouteForm` with validation and example chips, API client and `useRoutePlan` | T15 | 0.75 | All transitions of UI_SPEC §3 covered by reducer tests; form errors match API_SPEC §4.1; error-code → message map (§10) tested | `npm test`, manual |
+| U2 | `TripMap` (MapLibre): style loading, sources/layers, markers, popups, camera with panel padding, WebGL fallback, `lazy` loading | U1, T16 | 1.25 | Mocked-`maplibre-gl` tests: fixture response adds one source + two layers per route and the call counts stay constant after re-render and after selection change; selection calls `setPaintProperty`/`moveLayer` only; `fitBounds` padding includes the panel width; coordinates stay `[lon, lat]`; WebGL-unavailable fallback renders | tests + screenshot |
+| U3 | Reveal animation: `revealTimeline`, `AnalysisView`, `StepList`, vehicle marker, skip, reduced-motion | U2 | 1.0 | Timeline pure-function tests (order, total ≤ 5 s, cache-hit speed, reduced motion → none); Skip and Esc work; `aria-live` updates; durations equal `meta.timings_ms` | tests + screen recording |
+| U4 | Results view: recommendation header, disclosure, route cards (radio group), stop list, totals, two-way hover | U3 | 1.0 | Headline for each `recommendation.reason`; totals equal API numbers to the cent; infeasible card muted; keyboard selection works | tests |
+| U5 | Weather bar, risk legend, severity-colored selected route, polish, coverage ≥ 70% | U4 | 0.75 | `unavailable` weather hides bar/legend; segments colored by severity; `npm run lint && typecheck && test:coverage && build` pass | commands |
 
 Tags: `v0.2.0` after T20 (backend P1 complete), `v0.3.0` after T25. **Submission after `v0.3.0` (or `v0.2.0` if the cut rule triggered).**
 

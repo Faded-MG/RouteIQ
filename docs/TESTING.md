@@ -130,7 +130,7 @@ Budgets apply on a 2-vCPU machine. `test_latency_budget.py` asserts them with a 
 |---|---|
 | Form | Required fields, length limits, submit disabled while pending, coordinate toggle (if implemented), error banner per error code (`LOCATION_NOT_FOUND`, `NO_FEASIBLE_FUEL_PLAN`, `UPSTREAM_*`, `RATE_LIMITED`). |
 | API client | Parses the API_SPEC §6 example (`plan.example.json`); maps the error envelope; handles network failure. |
-| Map | `renders_polyline_and_markers`: polyline coordinates flipped to `[lat, lon]`; one marker per stop with sequence number; selecting another route changes the recommended styling; attribution present. (Leaflet is mocked at the `react-leaflet` boundary.) |
+| Map | `renders_polyline_and_markers`: polyline coordinates stay `[lon, lat]` for MapLibre; one marker per stop with sequence number; selecting another route changes the recommended styling; attribution present. (`maplibre-gl` is mocked at the module boundary.) |
 | Panels | Totals text equals fixture numbers; stop table ordered; weather unavailable placeholder; comparison deltas formatted; currency/number formatting helpers. |
 | Accessibility | Form inputs labelled; route selection reachable by keyboard; map has a text alternative (list of stops). |
 

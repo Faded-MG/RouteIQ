@@ -20,7 +20,7 @@ FuelRoute accepts two US locations, obtains up to three driving routes from **on
 
 ```mermaid
 flowchart LR
-  U[Browser: React + TS + Tailwind + Leaflet] -->|HTTPS| N[Nginx]
+  U[Browser: React + TS + Tailwind + MapLibre] -->|HTTPS| N[Nginx]
   N -->|/api| G[Gunicorn: Django + DRF]
   N -->|static SPA| S[(frontend dist)]
   G --> P[(PostgreSQL)]
@@ -50,7 +50,7 @@ flowchart LR
 | Polyline | `polyline` (PyPI) | Decode OSRM `polyline6`. | custom decoder. |
 | HTTP client | `httpx` with timeouts, 1 retry on 5xx/timeouts | Sync use in Django, easy mocking with `respx`. | `requests` acceptable but no benefit. |
 | Server | Gunicorn (2–3 sync workers) behind Nginx; WhiteNoise not used (Nginx serves static) | Simple, robust. | uvicorn/ASGI: no async need. |
-| Frontend | React 19 + TypeScript + Vite + Tailwind CSS v4 + **Leaflet via react-leaflet** + TanStack Query | Requirement. Leaflet is small, raster-tile based, trivial polyline/marker API. | MapLibre GL JS (vector tiles need a tile server/provider; better UI but more setup). |
+| Frontend | React 19 + TypeScript + Vite + Tailwind CSS v4 + **MapLibre GL JS** + TanStack Query | Requirement. MapLibre is the UI's vector map layer and keeps the route rendering and camera controls aligned with the screen-recording reference. | Leaflet via react-leaflet (older raster tile workflow, not the approved UI). |
 | Frontend styling convention | Tailwind v4 via **co-located plain CSS files** using `@reference` + `@apply`; no utility strings in JSX | Matches the team's convention of plain CSS beside each component while still using Tailwind. | Inline utility classes. |
 | Frontend tests | Vitest + React Testing Library + MSW | Standard for Vite. | Jest. |
 | Infra | Docker, Docker Compose, Nginx, GitHub Actions, Linux VPS | Required. | Kubernetes (overkill). |
@@ -68,8 +68,8 @@ Facts below are from the providers' public pages as searched on 2026-11-05. Item
 | Geocoding | ORS Geocoding (Pelias) | Free plan 1,000/day, 100/min ⚠ | — | Fallback provider (P3). |
 | Weather | **Open-Meteo** `api.open-meteo.com/v1/forecast` | Free tier is **non-commercial**, ≈10,000 calls/day (soft), no key; commercial use requires a paid plan ⚠ confirm current price. Attribution requested/required (CC BY 4.0). | **Yes: multiple `latitude`/`longitude` comma-separated lists in one request** (announced up to 1,000 locations). Hourly forecasts up to 16 days. | **Recommended** for P1 weather. |
 | Weather | US NWS `api.weather.gov` | Free, no key, US-only, but needs `/points/{lat},{lon}` then forecast fetch per point (2 calls/location), requires User-Agent. | No batching. | Rejected: too many calls. |
-| Map tiles | **tile.openstreetmap.org** | OSMF Tile Usage Policy: no heavy use, valid Referer/User-Agent, attribution; unsuitable for production traffic. | — | OK for local dev / the assessment demo. Tile URL is an env var (`VITE_TILE_URL`) so a commercial/self-hosted provider is a config change. |
-| Map library | **Leaflet 1.9 + react-leaflet** | BSD-2. | — | Selected. |
+| Map tiles | **OpenFreeMap vector style** (`https://tiles.openfreemap.org/styles/positron`) | Free public vector tiles, no API key, attribution required; no stated SLA. | — | Default style for the UI; env var `VITE_MAP_STYLE_URL` lets us swap the style without changing the app. |
+| Map library | **MapLibre GL JS** | BSD-3-Clause. | — | Selected. |
 
 **Final recommendation.** Assessment: OSRM demo + Nominatim + Open-Meteo, all behind provider interfaces (`RoutingProvider`, `GeocodingProvider`, `WeatherProvider`) with caching and strict call budgets. Production: self-hosted OSRM, a geocoder with a commercial/self-hosted plan (or pass coordinates from the UI), Open-Meteo paid plan (or disabled), a commercial tile provider. **Trade-off accepted:** the demo endpoints may throttle or disappear during review, so every external call has a timeout, a cache, a precise error code, and fixtures for offline demonstration (`apps/geo/fixtures/`).
 
@@ -263,10 +263,10 @@ Cache failures are logged and bypassed; they never fail a request. Plans contain
 
 ## 8. Frontend architecture
 * Single page. `RoutePlannerForm` (two text inputs + options) → `useRoutePlan` (TanStack Query mutation) → results state.
-* `RouteMap`: Leaflet map, all routes drawn (recommended = solid thick, others = dashed grey, click to select), start/finish markers, numbered stop markers with popups (station, price, gallons, cost), weather sample dots coloured by severity, OSM attribution control.
+* `RouteMap`: MapLibre map using the configured `VITE_MAP_STYLE_URL`, all routes drawn (recommended = solid thick, others = dashed grey, click to select), start/finish markers, numbered stop markers with popups (station, price, gallons, cost), weather sample dots coloured by severity, and built-in attribution control.
 * Panels: `FuelPlanPanel` (stop table + totals), `CostBreakdown`, `WeatherStrip`, `ComparisonTable`. Loading, empty, error (error `code` → human message map in `shared/lib/errors.ts`), and "weather unavailable" states are required.
 * Types in `features/route-planner/types.ts` mirror API_SPEC exactly; a contract test parses the example response in API_SPEC §6 (extracted to `frontend/src/test/fixtures/plan.example.json`).
-* No global state library. Env: `VITE_API_BASE_URL` (default `/api/v1`), `VITE_TILE_URL`, `VITE_TILE_ATTRIBUTION`.
+* No global state library. Env: `VITE_API_BASE_URL` (default `/api/v1`), `VITE_MAP_STYLE_URL`.
 
 ## 9. Security
 | Concern | Control |

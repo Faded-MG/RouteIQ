@@ -34,10 +34,10 @@ If two documents disagree, stop and report it (§11). Do not choose silently.
 | Backend runtime | Python 3.13 (confirm supported by the pinned Django), Django (latest stable series, verified at djangoproject.com; record the version in README), Django REST Framework, `psycopg[binary]`, `numpy`, `httpx`, `polyline`, `gunicorn`, `django-cors-headers`, `python-json-logger` |
 | Backend dev/test | `pytest`, `pytest-django`, `pytest-cov`, `respx`, `hypothesis`, `ruff`, `pip-audit`, `import-linter` |
 | Database | PostgreSQL 17. **No PostGIS, Redis, Celery, pandas, shapely, geopandas, GeoDjango.** |
-| Frontend | React, TypeScript (strict), Vite, Tailwind CSS v4 (`@tailwindcss/vite`), Leaflet, `react-leaflet`, `@tanstack/react-query` |
+| Frontend | React, TypeScript (strict), Vite, Tailwind CSS v4 (`@tailwindcss/vite`), `maplibre-gl`, `@tanstack/react-query` |
 | Frontend dev/test | Vitest, `@vitest/coverage-v8`, React Testing Library, `@testing-library/user-event`, `@testing-library/jest-dom`, jsdom, MSW, ESLint with `typescript-eslint` |
 | Infra | Docker, Docker Compose v2, Nginx, GitHub Actions, Ubuntu VPS, Let's Encrypt via certbot |
-| External APIs | OSRM (routing), Nominatim (geocoding), Open-Meteo (weather), OSM raster tiles (dev only) |
+| External APIs | OSRM (routing), Nominatim (geocoding), Open-Meteo (weather), OpenFreeMap vector tiles (dev/demo only) |
 
 **Dependency rule.** Before adding any package not listed: stop, name the package, the exact need, the alternatives considered (including "write 20 lines instead"), and its licence and maintenance status; wait for approval. Pin every dependency to an exact version in `requirements/*.txt` / `package-lock.json`. Prefer the standard library (`csv`, `statistics`, `dataclasses`, `heapq`, `math`).
 
