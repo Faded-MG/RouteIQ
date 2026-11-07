@@ -1,11 +1,16 @@
+import { lazy, Suspense } from "react";
 import { RoutePlannerForm } from "../features/route-planner/RoutePlannerForm";
 import { useRoutePlan } from "../features/route-planner/useRoutePlan";
 import { FuelPlanPanel } from "../features/fuel-plan/FuelPlanPanel";
-import { RouteMap } from "../features/map/RouteMap";
 import { ComparisonTable } from "../features/route-comparison/ComparisonTable";
 import { WeatherStrip } from "../features/weather/WeatherStrip";
 import { ExplainabilityCard } from "../shared/ui/ExplainabilityCard";
+import { strings } from "../shared/strings";
 import "./App.css";
+
+const TripMap = lazy(() =>
+  import("../features/map/TripMap").then((module) => ({ default: module.TripMap })),
+);
 
 export function App() {
   const {
@@ -72,12 +77,14 @@ export function App() {
 
         {/* Right Column: Interactive Map & Alternative Corridor Comparison */}
         <section className="app-visualization-pane" aria-label="Map and Route Alternatives">
-          <RouteMap
-            planResponse={planData}
-            activeRoute={activeRoute}
-            selectedStopSequence={selectedStopSequence}
-            onSelectStop={selectStop}
-          />
+          <Suspense fallback={<div className="map-loading" role="status">{strings.map.loading}</div>}>
+            <TripMap
+              planResponse={planData}
+              activeRoute={activeRoute}
+              selectedStopSequence={selectedStopSequence}
+              onSelectStop={selectStop}
+            />
+          </Suspense>
 
           {planData?.comparison && planData.comparison.length > 0 && planData.recommendation && (
             <ComparisonTable

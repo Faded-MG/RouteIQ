@@ -60,6 +60,13 @@
   @apply lg:col-span-7 flex flex-col gap-5;
 }
 
+.map-loading {
+  @apply min-h-[480px] w-full rounded-2xl border flex items-center justify-center;
+  border-color: var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+}
+
 .app-footer {
   @apply bg-slate-900 border-t border-slate-800 py-4 px-6 text-center text-xs text-slate-500 mt-auto;
 }
@@ -75,4 +82,3 @@
 .app-footer-spec {
   @apply text-slate-500 font-mono text-[11px];
 }
-
