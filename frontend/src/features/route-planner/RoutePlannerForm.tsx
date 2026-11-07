@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import type { PlanRequest } from "./types";
 import "./RoutePlannerForm.css";
 
@@ -7,6 +7,18 @@ interface RoutePlannerFormProps {
   isLoading: boolean;
   errorMessage: string | null;
 }
+
+interface FormErrors {
+  start?: string;
+  finish?: string;
+  startFuelGal?: string;
+}
+
+const EXAMPLE_ROUTES = [
+  { start: "New York, NY", finish: "Chicago, IL", label: "NYC → Chicago" },
+  { start: "Los Angeles, CA", finish: "New York, NY", label: "Coast to Coast (LA → NYC)" },
+  { start: "Philadelphia, PA", finish: "New York, NY", label: "Short Trip (PHL → NYC)" },
+] as const;
 
 export function RoutePlannerForm({
   onSubmit,
@@ -18,10 +30,40 @@ export function RoutePlannerForm({
   const [startFuelGal, setStartFuelGal] = useState("0");
   const [includeWeather, setIncludeWeather] = useState(true);
   const [allowAlternatives, setAllowAlternatives] = useState(true);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+
+  const presetLabels = useMemo(() => EXAMPLE_ROUTES.map((route) => route.label), []);
+
+  const validate = () => {
+    const nextErrors: FormErrors = {};
+    const trimmedStart = startQuery.trim();
+    const trimmedFinish = finishQuery.trim();
+
+    if (trimmedStart.length < 3 || trimmedStart.length > 200) {
+      nextErrors.start = "Start must be 3–200 characters.";
+    }
+
+    if (trimmedFinish.length < 3 || trimmedFinish.length > 200) {
+      nextErrors.finish = "Finish must be 3–200 characters.";
+    }
+
+    const fuelValue = Number.parseFloat(startFuelGal);
+    if (Number.isNaN(fuelValue) || fuelValue < 0 || fuelValue > 50) {
+      nextErrors.startFuelGal = "Starting fuel must be between 0 and 50 gallons.";
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (!startQuery.trim() || !finishQuery.trim() || isLoading) return;
+    if (isLoading) return;
+
+    if (!validate()) {
+      return;
+    }
 
     const request: PlanRequest = {
       start: { query: startQuery.trim() },
@@ -39,6 +81,7 @@ export function RoutePlannerForm({
   const applyPreset = (start: string, finish: string) => {
     setStartQuery(start);
     setFinishQuery(finish);
+    setErrors({});
   };
 
   return (
@@ -53,7 +96,7 @@ export function RoutePlannerForm({
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="planner-form">
+      <form onSubmit={handleSubmit} className="planner-form" noValidate>
         <div className="form-group">
           <label htmlFor="start-input" className="form-label">
             <span className="label-dot-start" aria-hidden="true" />
@@ -66,14 +109,21 @@ export function RoutePlannerForm({
             className="form-input"
             placeholder="e.g. New York, NY"
             value={startQuery}
-            onChange={(e) => setStartQuery(e.target.value)}
+            onChange={(e) => {
+              setStartQuery(e.target.value);
+              if (errors.start) {
+                setErrors((current) => ({ ...current, start: undefined }));
+              }
+            }}
             disabled={isLoading}
             autoComplete="off"
             aria-describedby="start-hint"
+            aria-invalid={Boolean(errors.start)}
           />
           <span id="start-hint" className="form-hint">
             Continental US location (geocoded via Nominatim)
           </span>
+          {errors.start && <span className="form-error-text">{errors.start}</span>}
         </div>
 
         <div className="form-group">
@@ -88,14 +138,21 @@ export function RoutePlannerForm({
             className="form-input"
             placeholder="e.g. Chicago, IL"
             value={finishQuery}
-            onChange={(e) => setFinishQuery(e.target.value)}
+            onChange={(e) => {
+              setFinishQuery(e.target.value);
+              if (errors.finish) {
+                setErrors((current) => ({ ...current, finish: undefined }));
+              }
+            }}
             disabled={isLoading}
             autoComplete="off"
             aria-describedby="finish-hint"
+            aria-invalid={Boolean(errors.finish)}
           />
           <span id="finish-hint" className="form-hint">
             Must be at least 1 mile from origin
           </span>
+          {errors.finish && <span className="form-error-text">{errors.finish}</span>}
         </div>
 
         <div className="form-row-two-col">
@@ -111,9 +168,18 @@ export function RoutePlannerForm({
               step="0.5"
               className="form-input"
               value={startFuelGal}
-              onChange={(e) => setStartFuelGal(e.target.value)}
+              onChange={(e) => {
+                setStartFuelGal(e.target.value);
+                if (errors.startFuelGal) {
+                  setErrors((current) => ({ ...current, startFuelGal: undefined }));
+                }
+              }}
               disabled={isLoading}
+              aria-invalid={Boolean(errors.startFuelGal)}
             />
+            {errors.startFuelGal && (
+              <span className="form-error-text">{errors.startFuelGal}</span>
+            )}
           </div>
 
           <div className="form-options-column">
@@ -139,6 +205,36 @@ export function RoutePlannerForm({
             </label>
           </div>
         </div>
+
+        <div className="advanced-controls">
+          <button
+            type="button"
+            className="advanced-toggle"
+            onClick={() => setShowAdvanced((value) => !value)}
+            disabled={isLoading}
+          >
+            {showAdvanced ? "Hide advanced" : "Advanced"}
+          </button>
+        </div>
+
+        {showAdvanced && (
+          <div className="advanced-panel">
+            <label htmlFor="starting-fuel-advanced" className="form-label">
+              Starting fuel (gal)
+            </label>
+            <input
+              id="starting-fuel-advanced"
+              type="number"
+              className="form-input"
+              min="0"
+              max="50"
+              step="0.5"
+              value={startFuelGal}
+              onChange={(e) => setStartFuelGal(e.target.value)}
+              disabled={isLoading}
+            />
+          </div>
+        )}
 
         {errorMessage && (
           <div className="form-error-banner" role="alert">
@@ -194,30 +290,17 @@ export function RoutePlannerForm({
 
         <div className="preset-pills">
           <span className="preset-label">Presets:</span>
-          <button
-            type="button"
-            className="preset-btn"
-            onClick={() => applyPreset("New York, NY", "Chicago, IL")}
-            disabled={isLoading}
-          >
-            NYC &rarr; Chicago
-          </button>
-          <button
-            type="button"
-            className="preset-btn"
-            onClick={() => applyPreset("Los Angeles, CA", "New York, NY")}
-            disabled={isLoading}
-          >
-            Coast to Coast (LA &rarr; NYC)
-          </button>
-          <button
-            type="button"
-            className="preset-btn"
-            onClick={() => applyPreset("Philadelphia, PA", "New York, NY")}
-            disabled={isLoading}
-          >
-            Short Trip (PHL &rarr; NYC)
-          </button>
+          {EXAMPLE_ROUTES.map((route) => (
+            <button
+              type="button"
+              key={route.label}
+              className="preset-btn"
+              onClick={() => applyPreset(route.start, route.finish)}
+              disabled={isLoading}
+            >
+              {route.label}
+            </button>
+          ))}
         </div>
       </form>
     </div>
