@@ -19,7 +19,10 @@ export function useRoutePlan() {
       setPlanData(data);
       setSelectedRouteId(data.recommended_route_id);
       setSelectedStopSequence(null);
-      dispatch({ type: "RESPONSE", response: data });
+      const reducedMotion =
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      dispatch({ type: "RESPONSE", response: data, reducedMotion });
     },
     onError: (error) => {
       const apiError = error instanceof RouteIQApiError ? error : null;
@@ -91,4 +94,3 @@ export function useRoutePlan() {
     },
   };
 }
-

@@ -41,7 +41,7 @@ After completing, please attach the Github code and a Loom video in the question
 | Clause | Text (short) | Covered by |
 |---|---|---|
 | A1 | API takes start and finish, both in the USA | T14; R1, R2 |
-| A2 | Return a map of the route | T14 (GeoJSON geometry, P0); T21–T24 (Leaflet map, P1) |
+| A2 | Return a map of the route | T14 (GeoJSON geometry, P0); U1–U5 (MapLibre UI, P1; see docs/UI_SPEC.md) |
 | A3 | Optimal (cost-effective) fuel-up locations | T12, T13, T14; R6, R21 |
 | A4 | 500-mile maximum range, multiple fuel-ups | T12, T13; R7, R20 |
 | A5 | Total money spent at 10 MPG | T12, T14; R8, R9 |

@@ -22,7 +22,7 @@ The original fuel price dataset provided by Spotter is committed unchanged at `d
 * **Database:** PostgreSQL 17 (plain relational schema — strictly no PostGIS, Redis, or Celery)
 * **Geospatial & Numerics:** NumPy (vectorized equirectangular projection and DP solver), `polyline` (polyline6 decoding), `httpx` (outbound HTTP with strict timeouts)
 * **Testing & Quality:** `pytest`, `pytest-django`, `pytest-cov`, `respx`, `hypothesis`, `ruff` (100 character line limit)
-* **Frontend (Phase 5):** React 19, TypeScript (strict), Vite, Tailwind CSS v4, Leaflet via `react-leaflet`, TanStack Query
+* **Frontend (Phase 5):** React 19, TypeScript (strict), Vite, Tailwind CSS v4, MapLibre GL JS, TanStack Query
 
 ---
 
@@ -55,7 +55,7 @@ fuelroute/
 │   │   ├── weather/                   # Open-Meteo weather sampling & interpretation
 │   │   └── planner/                   # Plan view, serializers, route selection
 │   └── tests/                         # Unit, integration, API, and latency budget tests
-├── frontend/                          # React + Leaflet client application
+├── frontend/                          # React + MapLibre client application
 ├── deploy/                            # Docker Compose, Nginx configs, deploy scripts
 └── data/                              # Static data assets (read-only CSV)
 ```
@@ -89,7 +89,7 @@ python manage.py import_stations --csv ../data/fuel-prices-for-be-assessment.csv
 python manage.py runserver 0.0.0.0:8000
 ```
 
-#### 2. Frontend (React 19 + TypeScript + Vite + Leaflet)
+#### 2. Frontend (React 19 + TypeScript + Vite + MapLibre)
 In a separate terminal window:
 ```bash
 cd frontend
@@ -223,7 +223,7 @@ Measured on macOS Python 3.13 via `backend/tests/perf/measure.py`:
 * **0:00–0:30 Overview:** Problem statement, Spotter assessment constraints (500-mile range, 10 MPG, empty start, median prices, place-centroid precision).
 * **0:30–2:30 Live Demo (React Map UI & Postman):**
   * Open `http://localhost:5173` in your browser (or fallback visualizer `docs/demo-map.html`, or Postman `docs/FuelRoute.postman_collection.json`).
-  * NYC → Chicago: show full route polyline on Leaflet, numbered fuel stops with rich popups, exact totals to the cent, travel time, and detour calculation.
+  * NYC → Chicago: show the route on MapLibre, numbered fuel stops with details, exact totals to the cent, travel time, and detour calculation.
   * Multi-route alternatives: toggle route alternatives to view comparison table with cost and duration deltas, plus recommendation decision code.
   * Weather strip: show live route weather risk assessment along the corridor.
   * Cross-country trip (LA → NYC, ~2,800 miles) with 6 stops, mathematically proving no leg exceeds 500 miles.

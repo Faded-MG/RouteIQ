@@ -50,7 +50,7 @@ flowchart LR
 | Polyline | `polyline` (PyPI) | Decode OSRM `polyline6`. | custom decoder. |
 | HTTP client | `httpx` with timeouts, 1 retry on 5xx/timeouts | Sync use in Django, easy mocking with `respx`. | `requests` acceptable but no benefit. |
 | Server | Gunicorn (2–3 sync workers) behind Nginx; WhiteNoise not used (Nginx serves static) | Simple, robust. | uvicorn/ASGI: no async need. |
-| Frontend | React 19 + TypeScript + Vite + Tailwind CSS v4 + **MapLibre GL JS** + TanStack Query | Requirement. MapLibre is the UI's vector map layer and keeps the route rendering and camera controls aligned with the screen-recording reference. | Leaflet via react-leaflet (older raster tile workflow, not the approved UI). |
+| Frontend | React 19 + TypeScript + Vite + Tailwind CSS v4 + **MapLibre GL JS** + TanStack Query | Requirement. MapLibre is the UI's vector map layer and keeps the route rendering and camera controls aligned with the screen-recording reference. | Raster tile mapping (not the approved UI). |
 | Frontend styling convention | Tailwind v4 via **co-located plain CSS files** using `@reference` + `@apply`; no utility strings in JSX | Matches the team's convention of plain CSS beside each component while still using Tailwind. | Inline utility classes. |
 | Frontend tests | Vitest + React Testing Library + MSW | Standard for Vite. | Jest. |
 | Infra | Docker, Docker Compose, Nginx, GitHub Actions, Linux VPS | Required. | Kubernetes (overkill). |

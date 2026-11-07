@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { AppProviders } from "./providers";
 import { App } from "./App";
+import "maplibre-gl/dist/maplibre-gl.css";
 import "../shared/styles/tailwind.css";
 
 const rootElement = document.getElementById("root");
@@ -17,4 +18,3 @@ createRoot(rootElement).render(
     </AppProviders>
   </StrictMode>,
 );
-

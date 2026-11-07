@@ -138,7 +138,7 @@ Silent changes to architecture, API shape, constants, algorithm, dependencies, o
 * No secrets in the repository, logs, error messages, or images.
 * No disabling TLS verification, CSRF/host checks, or `DEBUG=True` outside dev settings.
 * Never run `curl … | sh`, `sudo`, destructive commands (`rm -rf` outside the working tree, `DROP`, `docker system prune`, volume deletion) without explicit approval.
-* Respect provider policies: Nominatim ≤ 1 request/s, descriptive User-Agent, cache everything, no bulk or autocomplete; OSRM demo ≤ 1 request/s and never use it in load tests; tile.openstreetmap.org for development only. Any script that touches a public API must throttle and be run manually, once.
+* Respect provider policies: Nominatim ≤ 1 request/s, descriptive User-Agent, cache everything, no bulk or autocomplete; OSRM demo ≤ 1 request/s and never use it in load tests; OpenFreeMap requires attribution and has no stated SLA. Any script that touches a public API must throttle and be run manually, once.
 * Validate all input with serializers; no string-built SQL; no shell invocation with user input.
 * No new endpoints beyond API_SPEC §1. Django admin and DRF browsable API stay disabled.
 

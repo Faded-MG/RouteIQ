@@ -1,4 +1,4 @@
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useState } from "react";
 import type { PlanRequest } from "./types";
 import "./RoutePlannerForm.css";
 
@@ -32,8 +32,6 @@ export function RoutePlannerForm({
   const [allowAlternatives, setAllowAlternatives] = useState(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
-
-  const presetLabels = useMemo(() => EXAMPLE_ROUTES.map((route) => route.label), []);
 
   const validate = () => {
     const nextErrors: FormErrors = {};

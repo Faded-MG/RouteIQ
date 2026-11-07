@@ -5,6 +5,7 @@ export type PlannerView = "form" | "loading" | "revealing" | "results" | "error"
 export interface PlannerState {
   view: PlannerView;
   request: PlanRequest | null;
+  response: PlanResponse | null;
   lastError: {
     code?: string;
     message?: string;
@@ -13,8 +14,10 @@ export interface PlannerState {
 
 export type PlannerAction =
   | { type: "SUBMIT"; request: PlanRequest }
-  | { type: "RESPONSE"; response: PlanResponse }
+  | { type: "RESPONSE"; response: PlanResponse; reducedMotion: boolean }
   | { type: "ERROR"; code?: string; message?: string }
+  | { type: "REVEAL_COMPLETE" }
+  | { type: "SKIP_REVEAL" }
   | { type: "CANCEL" }
   | { type: "RETRY" }
   | { type: "EDIT" }
@@ -23,6 +26,7 @@ export type PlannerAction =
 export const initialPlannerState: PlannerState = {
   view: "form",
   request: null,
+  response: null,
   lastError: null,
 };
 
@@ -36,21 +40,19 @@ export function plannerFlowReducer(
         ...state,
         view: "loading",
         request: action.request,
+        response: null,
         lastError: null,
       };
-    case "RESPONSE": {
-      const prefersReducedMotion =
-        typeof window !== "undefined" &&
-        typeof window.matchMedia === "function" &&
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
+    case "RESPONSE":
       return {
         ...state,
-        view: prefersReducedMotion ? "results" : "revealing",
-        request: state.request,
+        view: action.reducedMotion ? "results" : "revealing",
+        response: action.response,
         lastError: null,
       };
-    }
+    case "REVEAL_COMPLETE":
+    case "SKIP_REVEAL":
+      return state.view === "revealing" ? { ...state, view: "results" } : state;
     case "ERROR":
       return {
         ...state,
@@ -71,6 +73,7 @@ export function plannerFlowReducer(
       return {
         ...state,
         view: "form",
+        response: null,
         lastError: null,
       };
     case "RESET":

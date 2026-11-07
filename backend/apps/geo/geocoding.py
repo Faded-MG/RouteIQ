@@ -43,6 +43,11 @@ def normalize_query(query: str) -> str:
     return " ".join(s.split())
 
 
+def normalize_display_name(label: str) -> str:
+    """Restore missing spaces before the geographic suffix in provider labels."""
+    return re.sub(r"(?<=[a-z])County\b", " County", label)
+
+
 class NominatimProvider:
     """Client for OpenStreetMap Nominatim geocoding API conforming to usage policy."""
 
@@ -247,7 +252,7 @@ class GeocodingService:
         try:
             lat = float(result["lat"])
             lon = float(result["lon"])
-            label = str(result.get("display_name", query))
+            label = normalize_display_name(str(result.get("display_name", query)))
         except (KeyError, ValueError) as exc:
             raise ApiError(
                 code=ApiErrorCode.UPSTREAM_BAD_RESPONSE,

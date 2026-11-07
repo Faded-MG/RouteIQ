@@ -12,7 +12,7 @@ Not copied: name, copy text, colors, fonts, icons, logo, the "HQ" pin, code, ass
 2. During analysis, a small vehicle marker travels along each candidate route in turn while the line is drawn progressively. The current route is drawn dark, previous routes turn grey. A letter-coded sub-list (A, B, C) shows `testing` → `✓` per route.
 3. At the end all routes are drawn in color, the map camera eases to fit them, ETA time chips appear at checkpoints, and a label chip sits on each route ("A · 5h 14m · 225 mi" plus a badge).
 4. The panel switches to a **Recommendation** view with a back arrow: headline, one-line reason, a "Why this route?" disclosure, an info notice about how many routes the router returned, then route cards (letter badge, name, badges, distance/time, a risk bar, a one-line verdict). A risk legend sits bottom-right of the map.
-5. Map library: **MapLibre GL JS** with an OpenFreeMap vector style (owner decision, 2026-11-07), matching the reference's rendering approach [A: inferred from its footer credits and compact attribution control]. This replaces Leaflet in ARCHITECTURE §2/§3/§8 and AGENTS §4; the required document changes are listed in §14 (CR-UI-1).
+5. Map library: **MapLibre GL JS** with an OpenFreeMap vector style (owner decision, 2026-11-07), matching the reference's rendering approach [A: inferred from its footer credits and compact attribution control]. This replaces the earlier raster-map approach in ARCHITECTURE §2/§3/§8 and AGENTS §4; the required document changes are listed in §14 (CR-UI-1).
 
 ## 2. Layout
 
@@ -141,7 +141,7 @@ features/fuel-plan/      StopList.tsx/.css  Totals.tsx/.css
 features/weather/        WeatherBar.tsx/.css  RiskLegend.tsx/.css  severity.ts
 shared/                  styles/{tailwind.css,theme.css}  strings.ts  ui/{Badge,Spinner,Disclosure}.tsx/.css  lib/{format.ts,errors.ts}
 ```
-Styling convention (AGENTS §6): each component has a co-located `.css` starting with `@reference "../../shared/styles/tailwind.css";` using `@apply` on semantic class names. No utility strings in JSX. Dependencies: add `maplibre-gl`; remove `leaflet`, `react-leaflet`, `@types/leaflet`; nothing else.
+Styling convention (AGENTS §6): each component has a co-located `.css` starting with `@reference "../../shared/styles/tailwind.css";` using `@apply` on semantic class names. No utility strings in JSX. Dependency: add only `maplibre-gl`.
 
 ## 12. Tasks
 
@@ -161,10 +161,9 @@ Weather time scrubber/play control, satellite toggle, help modal, truck-weight i
 
 | Document | Section | Change |
 |---|---|---|
-| ARCHITECTURE | §2 technology table (Frontend row), §3 (map library and tile rows), §8 (RouteMap) | Leaflet + react-leaflet + OSM raster tiles → MapLibre GL JS + OpenFreeMap vector style; OSM tile policy no longer applies; record OpenFreeMap terms (free, no key, attribution required, no stated SLA) |
+| ARCHITECTURE | §2 technology table (Frontend row), §3 (map library and tile rows), §8 (RouteMap) | Prior raster map library + OSM raster tiles → MapLibre GL JS + OpenFreeMap vector style; OSM tile policy no longer applies; record OpenFreeMap terms (free, no key, attribution required, no stated SLA) |
 | ARCHITECTURE | §4 tree, §8 env | `VITE_TILE_URL`/`VITE_TILE_ATTRIBUTION` → `VITE_MAP_STYLE_URL`; map feature files per §11 here |
-| AGENTS | §4 frontend row | `leaflet`, `react-leaflet` → `maplibre-gl` |
+| AGENTS | §4 frontend row | Replace the previous raster map dependencies with `maplibre-gl` |
 | DEPLOYMENT | §2 env table, §3 frontend Dockerfile build args, §6 CSP | replace tile env/args with `VITE_MAP_STYLE_URL`; CSP per §7 here |
 | TESTING | §10 Map row | mock `maplibre-gl` at the module boundary; call-based assertions |
 | PLAN | T21–T24 | replaced by U1–U5 of this file |
-

@@ -1,36 +1,6 @@
 @import "tailwindcss";
 
-/* Global baseline & Leaflet overrides */
+/* Global baseline */
 :root {
   color-scheme: dark;
 }
-
-/* Ensure Leaflet controls match dark theme aesthetics */
-.leaflet-container {
-  background: #090d16;
-  font-family: inherit;
-}
-
-.leaflet-popup-content-wrapper {
-  background: #1e293b;
-  color: #f8fafc;
-  border-radius: 0.75rem;
-  border: 1px solid #334155;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
-}
-
-.leaflet-popup-tip {
-  background: #1e293b;
-}
-
-.leaflet-bar a {
-  background-color: #1e293b !important;
-  color: #94a3b8 !important;
-  border-bottom: 1px solid #334155 !important;
-}
-
-.leaflet-bar a:hover {
-  background-color: #334155 !important;
-  color: #f8fafc !important;
-}
-

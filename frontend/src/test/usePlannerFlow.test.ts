@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   initialPlannerState,
   plannerFlowReducer,
@@ -21,6 +21,7 @@ describe("usePlannerFlow reducer", () => {
 
     const revealed = plannerFlowReducer(submitted, {
       type: "RESPONSE",
+      reducedMotion: false,
       response: {
         request_id: "req-1",
         status: "ok",
@@ -61,9 +62,14 @@ describe("usePlannerFlow reducer", () => {
     });
 
     expect(revealed.view).toBe("revealing");
+    expect(revealed.response?.request_id).toBe("req-1");
 
-    const results = plannerFlowReducer(revealed, { type: "EDIT" });
-    expect(results.view).toBe("form");
+    const finished = plannerFlowReducer(revealed, { type: "REVEAL_COMPLETE" });
+    expect(finished.view).toBe("results");
+
+    const edited = plannerFlowReducer(finished, { type: "EDIT" });
+    expect(edited.view).toBe("form");
+    expect(edited.response).toBeNull();
   });
 
   it("handles error and cancel states", () => {
@@ -80,13 +86,33 @@ describe("usePlannerFlow reducer", () => {
     expect(cancelled.view).toBe("form");
   });
 
-  it("uses reduced-motion shortcut when the user prefers less animation", () => {
-    vi.stubGlobal("matchMedia", () => ({ matches: true }));
+  it("skips the reveal when reduced motion is requested", () => {
     const state = plannerFlowReducer(
       { ...initialPlannerState, view: "loading" },
-      { type: "RESPONSE", response: {} as never },
+      {
+        type: "RESPONSE",
+        response: {
+          request_id: "req-2",
+          status: "ok",
+        } as never,
+        reducedMotion: true,
+      },
     );
     expect(state.view).toBe("results");
-    vi.unstubAllGlobals();
+    expect(state.response?.request_id).toBe("req-2");
+  });
+
+  it("allows retry, cancel, and skip only through valid states", () => {
+    const errorState = plannerFlowReducer(initialPlannerState, {
+      type: "ERROR",
+      code: "UPSTREAM_TIMEOUT",
+      message: "Try again",
+    });
+    const retrying = plannerFlowReducer(errorState, { type: "RETRY" });
+    expect(retrying.view).toBe("loading");
+
+    const revealing = { ...retrying, view: "revealing" as const };
+    expect(plannerFlowReducer(revealing, { type: "SKIP_REVEAL" }).view).toBe("results");
+    expect(plannerFlowReducer(errorState, { type: "SKIP_REVEAL" })).toBe(errorState);
   });
 });

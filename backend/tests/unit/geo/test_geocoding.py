@@ -9,13 +9,30 @@ import httpx
 import pytest
 
 from apps.common.errors import ApiError, ApiErrorCode
-from apps.geo.geocoding import GeocodingService, NominatimProvider, normalize_query
+from apps.geo.geocoding import (
+    GeocodingService,
+    NominatimProvider,
+    normalize_display_name,
+    normalize_query,
+)
 
 
 def test_normalization():
     assert normalize_query("  New York,  NY!  ") == "new york ny"
     assert normalize_query("St. Louis, MO-USA.") == "st louis mo usa"
     assert normalize_query("  San Francisco   ") == "san francisco"
+
+
+def test_display_name_restores_missing_county_space():
+    assert (
+        normalize_display_name(
+            "Chicago, South Chicago Township, CookCounty, Illinois, United States"
+        )
+        == "Chicago, South Chicago Township, Cook County, Illinois, United States"
+    )
+    assert normalize_display_name("Chicago, Cook County, Illinois") == (
+        "Chicago, Cook County, Illinois"
+    )
 
 
 @pytest.mark.django_db
