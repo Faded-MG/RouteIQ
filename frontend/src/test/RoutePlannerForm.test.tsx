@@ -67,6 +67,30 @@ describe("RoutePlannerForm Component", () => {
     expect(screen.getByLabelText(/Destination/i)).toHaveValue("New York, NY");
   });
 
+  it("validates location and fuel fields before submit", async () => {
+    const user = userEvent.setup();
+    const handleSubmit = vi.fn();
+
+    render(
+      <RoutePlannerForm
+        onSubmit={handleSubmit}
+        isLoading={false}
+        errorMessage={null}
+      />,
+    );
+
+    await user.clear(screen.getByLabelText(/Origin/i));
+    await user.clear(screen.getByLabelText(/Destination/i));
+    await user.clear(screen.getByLabelText(/Initial Fuel/i));
+    await user.type(screen.getByLabelText(/Initial Fuel/i), "70");
+    await user.click(screen.getByRole("button", { name: /Calculate Optimal Route/i }));
+
+    expect(handleSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText(/Start must be 3–200 characters./i)).toBeInTheDocument();
+    expect(screen.getByText(/Finish must be 3–200 characters./i)).toBeInTheDocument();
+    expect(screen.getByText(/Starting fuel must be between 0 and 50 gallons./i)).toBeInTheDocument();
+  });
+
   it("displays error banner when errorMessage is provided", () => {
     render(
       <RoutePlannerForm
